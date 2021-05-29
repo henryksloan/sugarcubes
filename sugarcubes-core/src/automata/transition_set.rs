@@ -4,6 +4,7 @@ use slotmap::{DefaultKey, SlotMap};
 use std::collections::{HashMap, HashSet};
 
 /// A collection of transitions with auxiliary maps
+#[derive(Default)]
 pub struct TransitionSet<T: Transition> {
     transitions: SlotMap<DefaultKey, T>,
     transitions_from: HashMap<u32, HashSet<DefaultKey>>, // Transitions coming from a given state
@@ -18,19 +19,29 @@ impl<T: Transition> TransitionSet<T> {
         self.transitions_to.entry(to).or_default().insert(key);
     }
 
-    pub fn from(&self, from: u32) -> &HashSet<DefaultKey> {
+    pub fn from(&self, from: u32) -> Vec<&T> {
+        self.keys_from(from)
+            .iter()
+            .map(|&key| self.transitions.get(key).unwrap())
+            .collect()
+    }
+
+    pub fn to(&self, to: u32) -> Vec<&T> {
+        self.keys_to(to)
+            .iter()
+            .map(|&key| self.transitions.get(key).unwrap())
+            .collect()
+    }
+
+    fn keys_from(&self, from: u32) -> &HashSet<DefaultKey> {
         self.transitions_from
             .get(&from)
-            .expect("no transition_from for state")
+            .expect("no transitions_from for state")
     }
 
-    pub fn to(&self, to: u32) -> &HashSet<DefaultKey> {
+    fn keys_to(&self, to: u32) -> &HashSet<DefaultKey> {
         self.transitions_to
             .get(&to)
-            .expect("no transition_to for state")
-    }
-
-    pub fn get(&self, key: DefaultKey) -> Option<&T> {
-        self.transitions.get(key)
+            .expect("no transitions_to for state")
     }
 }

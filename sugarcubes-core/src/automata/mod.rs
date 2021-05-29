@@ -5,6 +5,8 @@ pub mod state;
 pub mod transition;
 pub mod transition_set;
 
+pub const EMPTY_STRING: char = 'ε';
+
 pub use self::{
     automaton::Automaton,
     simulate_automaton::{Configuration, SimulateAutomaton},

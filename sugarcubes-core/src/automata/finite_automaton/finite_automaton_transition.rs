@@ -1,6 +1,7 @@
 use crate::automata::Transition;
 
 /// A transition between two states in a finite automaton
+#[derive(Default)]
 pub struct FiniteAutomatonTransition {
     from: u32,
     to: u32,
@@ -18,6 +19,10 @@ impl Transition for FiniteAutomatonTransition {
 }
 
 impl FiniteAutomatonTransition {
+    pub fn new(from: u32, to: u32, symbol: char) -> Self {
+        Self { from, to, symbol }
+    }
+
     pub fn symbol(&self) -> char {
         self.symbol
     }

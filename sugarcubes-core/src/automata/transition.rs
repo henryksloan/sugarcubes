@@ -1,5 +1,5 @@
 /// Defines a generic transition, effectively a directed edge in a graph
-pub trait Transition {
+pub trait Transition: Default {
     fn from(&self) -> u32;
     fn to(&self) -> u32;
 }
