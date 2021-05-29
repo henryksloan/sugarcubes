@@ -19,6 +19,11 @@ impl<T: Transition> TransitionSet<T> {
         self.transitions_to.entry(to).or_default().insert(key);
     }
 
+    pub fn register_state(&mut self, state: u32) {
+        self.transitions_from.entry(state).or_default();
+        self.transitions_to.entry(state).or_default();
+    }
+
     pub fn from(&self, from: u32) -> Vec<&T> {
         self.keys_from(from)
             .iter()

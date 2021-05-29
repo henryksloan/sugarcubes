@@ -17,7 +17,12 @@ impl<T: Transition> Automaton<T> {
         let used_ids: HashSet<u32> = self.states.keys().cloned().collect();
         let id = (0..).filter(|id| !used_ids.contains(id)).next().unwrap();
         self.states.insert(id, State {});
+        self.transitions.register_state(id);
         id
+    }
+
+    pub fn states(&self) -> Vec<&u32> {
+        self.states.keys().collect()
     }
 
     pub fn transitions_from(&self, from: u32) -> Vec<&T> {
