@@ -17,4 +17,20 @@ impl<T: Transition> TransitionSet<T> {
         self.transitions_from.entry(from).or_default().insert(key);
         self.transitions_to.entry(to).or_default().insert(key);
     }
+
+    pub fn from(&self, from: u32) -> &HashSet<DefaultKey> {
+        self.transitions_from
+            .get(&from)
+            .expect("no transition_from for state")
+    }
+
+    pub fn to(&self, to: u32) -> &HashSet<DefaultKey> {
+        self.transitions_to
+            .get(&to)
+            .expect("no transition_to for state")
+    }
+
+    pub fn get(&self, key: DefaultKey) -> Option<&T> {
+        self.transitions.get(key)
+    }
 }
