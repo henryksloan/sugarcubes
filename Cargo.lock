@@ -1119,11 +1119,12 @@ dependencies = [
 
 [[package]]
 name = "sapp-android"
-version = "0.1.6"
+version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cb57c363bd1f1afeb1f16207bc425bc5672db23920c1adf1545000fc4d4f84f9"
+checksum = "2d288879b4f43deceb21d5bb3be1740b2817cd5e3f3dcd633478937a3facd672"
 dependencies = [
- "cc",
+ "libc",
+ "ndk-sys",
 ]
 
 [[package]]
@@ -1267,6 +1268,7 @@ version = "0.1.0"
 dependencies = [
  "egui",
  "egui-macroquad",
+ "glam",
  "macroquad",
  "sugarcubes-core",
 ]

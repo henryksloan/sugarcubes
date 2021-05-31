@@ -26,6 +26,11 @@ fn draw_arrow(point: (f32, f32), angle: f32, size: f32, outlined: bool) {
     }
 }
 
+enum StateColor {
+    INACTIVE,
+    ACTIVE,
+}
+
 #[macroquad::main("Sugarcubes")]
 async fn main() {
     let mut fa = FiniteAutomaton::default();
@@ -50,15 +55,25 @@ async fn main() {
     let arrow_size = 17.;
     let state_color = Color::from_rgba(232, 237, 133, 255);
 
+    let gl = unsafe { get_internal_gl().quad_gl };
+
+    let font = load_ttf_font("./assets/OpenSans-Regular.ttf").await;
+
     loop {
         clear_background(WHITE);
 
         // Process keys, mouse etc.
 
         egui_macroquad::ui(|egui_ctx| {
-            egui::Window::new("egui ❤ macroquad").show(egui_ctx, |ui| {
-                ui.label("Test");
-            });
+            egui::Window::new("Simulate Finite Automaton")
+                .auto_sized()
+                .show(egui_ctx, |ui| {
+                    ui.label("Test");
+                    if ui.button("Step").clicked() {}
+                    if ui.button("Step").clicked() {}
+                    if ui.button("Step").clicked() {}
+                    if ui.button("Step").clicked() {}
+                });
         });
 
         // Draw things before egui
@@ -84,6 +99,39 @@ async fn main() {
                 );
 
                 draw_arrow(point_to, angle, arrow_size, false);
+
+                let distance = ((point_to.0 - point_from.0).powi(2)
+                    + (point_to.1 - point_from.1).powi(2))
+                .sqrt()
+                    / 2.;
+                let middle_x_off = angle.cos() * distance;
+                let middle_y_off = angle.sin() * distance;
+
+                let font_size = 120.;
+                let symbol_str = &transition.symbol().to_string();
+                let text_size = measure_text(symbol_str, None, font_size as _, 0.2);
+                gl.push_model_matrix(glam::Mat4::from_translation(glam::vec3(
+                    point_from.0 + middle_x_off,
+                    point_from.1 + middle_y_off,
+                    0.,
+                )));
+                gl.push_model_matrix(glam::Mat4::from_rotation_z(angle));
+
+                draw_text_ex(
+                    symbol_str,
+                    -text_size.width / 2.,
+                    -8.,
+                    TextParams {
+                        font_size: font_size as _,
+                        font_scale: 0.2,
+                        font,
+                        color: BLACK,
+                        ..Default::default()
+                    },
+                );
+
+                gl.pop_model_matrix();
+                gl.pop_model_matrix();
             }
 
             draw_circle(position.0, position.1, radius, state_color);
@@ -101,12 +149,16 @@ async fn main() {
             let text = &state.to_string();
             let font_size = 30.;
             let text_size = measure_text(text, None, font_size as _, 1.0);
-            draw_text(
+            draw_text_ex(
                 &state.to_string(),
                 position.0 - text_size.width / 2.,
                 position.1 - text_size.height / 2. + radius / 2.,
-                font_size,
-                BLACK,
+                TextParams {
+                    font_size: font_size as _,
+                    font,
+                    color: BLACK,
+                    ..Default::default()
+                },
             );
         }
 
