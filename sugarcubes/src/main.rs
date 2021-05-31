@@ -9,20 +9,19 @@ use std::collections::HashMap;
 // Draw an arrow with its tip at a given point,
 // at a given angle relative to the horizontal,
 // and with a given sidelength
-fn draw_arrow(point: (f32, f32), angle: f32, size: f32, outlined: bool) {
+fn draw_arrow(point: Vec2, angle: f32, size: f32, outlined: bool) {
     let a = (angle + std::f32::consts::FRAC_PI_6).cos() * size;
     let b = (angle + std::f32::consts::FRAC_PI_6).sin() * size;
     let c = (angle - std::f32::consts::FRAC_PI_6).cos() * size;
     let d = (angle - std::f32::consts::FRAC_PI_6).sin() * size;
-    let v1 = Vec2::new(point.0, point.1);
-    let v2 = Vec2::new(point.0 - a, point.1 - b);
-    let v3 = Vec2::new(point.0 - c, point.1 - d);
+    let v1 = point - vec2(a, b);
+    let v2 = point - vec2(c, d);
 
     if outlined {
-        draw_triangle(v1, v2, v3, WHITE);
-        draw_triangle_lines(v1, v2, v3, 2., BLACK);
+        draw_triangle(point, v1, v2, WHITE);
+        draw_triangle_lines(point, v1, v2, 2., BLACK);
     } else {
-        draw_triangle(v1, v2, v3, BLACK);
+        draw_triangle(point, v1, v2, BLACK);
     }
 }
 
@@ -46,9 +45,9 @@ async fn main() {
         .add_transition(FiniteAutomatonTransition::new(state0, state2, EMPTY_STRING));
 
     let mut position_map = HashMap::new();
-    position_map.insert(state0, (200., 300.));
-    position_map.insert(state1, (400., 200.));
-    position_map.insert(state2, (400., 400.));
+    position_map.insert(state0, vec2(200., 300.));
+    position_map.insert(state1, vec2(400., 200.));
+    position_map.insert(state2, vec2(400., 400.));
 
     let radius = 35.;
     let initial_arrow_size = 24.;
@@ -71,7 +70,7 @@ async fn main() {
             if !mouse_down {
                 mouse_down = true;
                 for (&state, &position) in position_map.iter() {
-                    if mouse_position.abs_diff_eq(position.into(), radius) {
+                    if mouse_position.abs_diff_eq(position, radius) {
                         selected_state = Some(state);
                         break;
                     }
@@ -97,47 +96,46 @@ async fn main() {
         // Draw things before egui
         for state in fa.automaton.states() {
             if selected_state == Some(*state) {
-                position_map.insert(*state, (mouse_position.x, mouse_position.y));
+                position_map.insert(*state, mouse_position);
             }
 
-            let position = position_map.get(state).unwrap_or(&(0., 0.));
+            let position = position_map.get(state).unwrap_or(&Vec2::ZERO);
 
             for transition in fa.automaton.transitions_from(*state) {
-                let other_position = position_map.get(&transition.to()).unwrap_or(&(0., 0.));
-                let angle = ((other_position.1 as f32 - position.1)
-                    / (other_position.0 - position.0))
-                    .atan();
-                let x_off = angle.cos() * radius;
-                let y_off = angle.sin() * radius;
-                let point_from = (position.0 + x_off, position.1 + y_off);
-                let point_to = (other_position.0 - x_off, other_position.1 - y_off);
+                let other_position = position_map.get(&transition.to()).unwrap_or(&Vec2::ZERO);
+                let angle = vec2(1., 0.).angle_between(*other_position - *position);
+                let distance = position.distance(*other_position);
+                let radius_over_distance = radius / distance;
+                let point_from = position.lerp(*other_position, radius_over_distance);
+                let point_to = other_position.lerp(*position, radius_over_distance);
                 draw_line(
-                    point_from.0,
-                    point_from.1,
-                    point_to.0,
-                    point_to.1,
+                    point_from.x,
+                    point_from.y,
+                    point_to.x,
+                    point_to.y,
                     2.,
                     BLACK,
                 );
 
                 draw_arrow(point_to, angle, arrow_size, false);
 
-                let distance = ((point_to.0 - point_from.0).powi(2)
-                    + (point_to.1 - point_from.1).powi(2))
-                .sqrt()
-                    / 2.;
-                let middle_x_off = angle.cos() * distance;
-                let middle_y_off = angle.sin() * distance;
-
+                let middle_x_off = angle.cos() * (distance / 2.);
+                let middle_y_off = angle.sin() * (distance / 2.);
+                let middle = position.lerp(*other_position, 0.5);
                 let font_size = 120.;
                 let symbol_str = &transition.symbol().to_string();
                 let text_size = measure_text(symbol_str, None, font_size as _, 0.2);
                 gl.push_model_matrix(glam::Mat4::from_translation(glam::vec3(
-                    point_from.0 + middle_x_off,
-                    point_from.1 + middle_y_off,
-                    0.,
+                    middle.x, middle.y, 0.,
                 )));
-                gl.push_model_matrix(glam::Mat4::from_rotation_z(angle));
+                let text_angle = angle
+                    + if angle > std::f32::consts::FRAC_PI_2 || angle < -std::f32::consts::FRAC_PI_2
+                    {
+                        std::f32::consts::PI
+                    } else {
+                        0.
+                    };
+                gl.push_model_matrix(glam::Mat4::from_rotation_z(text_angle));
 
                 draw_text_ex(
                     symbol_str,
@@ -156,12 +154,12 @@ async fn main() {
                 gl.pop_model_matrix();
             }
 
-            draw_circle(position.0, position.1, radius, state_color);
-            draw_circle_lines(position.0, position.1, radius + 0.5, 2., BLACK);
+            draw_circle(position.x, position.y, radius, state_color);
+            draw_circle_lines(position.x, position.y, radius + 0.5, 2., BLACK);
 
             if fa.automaton.initial() == Some(*state) {
                 draw_arrow(
-                    (position.0 - radius, position.1),
+                    vec2(position.x - radius, position.y),
                     0.,
                     initial_arrow_size,
                     true,
@@ -173,8 +171,8 @@ async fn main() {
             let text_size = measure_text(text, None, font_size as _, 1.0);
             draw_text_ex(
                 &state.to_string(),
-                position.0 - text_size.width / 2.,
-                position.1 - text_size.height / 2. + radius / 2.,
+                position.x - text_size.width / 2.,
+                position.y - text_size.height / 2. + radius / 2.,
                 TextParams {
                     font_size: font_size as _,
                     font,
