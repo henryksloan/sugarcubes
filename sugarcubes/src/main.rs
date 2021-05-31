@@ -1,6 +1,6 @@
 use sugarcubes_core::automata::{
     finite_automaton::{FiniteAutomaton, FiniteAutomatonTransition},
-    Transition, EMPTY_STRING,
+    Configuration, SimulateAutomaton, Transition, EMPTY_STRING,
 };
 
 use macroquad::prelude::*;
@@ -25,10 +25,8 @@ fn draw_arrow(point: Vec2, angle: f32, size: f32, outlined: bool) {
     }
 }
 
-enum StateColor {
-    INACTIVE,
-    ACTIVE,
-}
+const INACTIVE_COLOR: Color = Color::new(0.90, 0.93, 0.52, 1.00);
+const ACTIVE_COLOR: Color = Color::new(0.44, 0.45, 0.19, 1.00);
 
 #[macroquad::main("Sugarcubes")]
 async fn main() {
@@ -44,6 +42,8 @@ async fn main() {
     fa.automaton
         .add_transition(FiniteAutomatonTransition::new(state0, state2, EMPTY_STRING));
 
+    let mut configurations = fa.initial_configurations("xabc");
+
     let mut position_map = HashMap::new();
     position_map.insert(state0, vec2(200., 300.));
     position_map.insert(state1, vec2(400., 200.));
@@ -52,7 +52,6 @@ async fn main() {
     let radius = 35.;
     let initial_arrow_size = 24.;
     let arrow_size = 17.;
-    let state_color = Color::from_rgba(232, 237, 133, 255);
 
     let gl = unsafe { get_internal_gl().quad_gl };
 
@@ -81,17 +80,25 @@ async fn main() {
             selected_state = None;
         }
 
+        let mut should_step = false;
         egui_macroquad::ui(|egui_ctx| {
             egui::Window::new("Simulate Finite Automaton")
-                .auto_sized()
+                .title_bar(false)
+                .fixed_size((screen_width(), screen_height() / 8.))
+                .anchor(egui::Align2::LEFT_BOTTOM, (0., 0.))
                 .show(egui_ctx, |ui| {
                     ui.label("Test");
                     if ui.button("Step").clicked() {}
                     if ui.button("Step").clicked() {}
                     if ui.button("Step").clicked() {}
-                    if ui.button("Step").clicked() {}
+                    if ui.button("Step").clicked() {
+                        should_step = true;
+                    }
                 });
         });
+        if should_step {
+            configurations = fa.step_all(configurations);
+        }
 
         // Draw things before egui
         for state in fa.automaton.states() {
@@ -119,8 +126,6 @@ async fn main() {
 
                 draw_arrow(point_to, angle, arrow_size, false);
 
-                let middle_x_off = angle.cos() * (distance / 2.);
-                let middle_y_off = angle.sin() * (distance / 2.);
                 let middle = position.lerp(*other_position, 0.5);
                 let font_size = 120.;
                 let symbol_str = &transition.symbol().to_string();
@@ -154,6 +159,14 @@ async fn main() {
                 gl.pop_model_matrix();
             }
 
+            let state_color = if configurations
+                .iter()
+                .any(|configuration| configuration.state() == *state)
+            {
+                ACTIVE_COLOR
+            } else {
+                INACTIVE_COLOR
+            };
             draw_circle(position.x, position.y, radius, state_color);
             draw_circle_lines(position.x, position.y, radius + 0.5, 2., BLACK);
 

@@ -12,4 +12,10 @@ pub trait SimulateAutomaton {
 
     /// Consumes a configuration and returns all possible subsequent configurations
     fn step(&self, configuration: Self::ConfigurationType) -> Vec<Self::ConfigurationType>;
+
+    /// Consumes a list of configurations and returns the flat list of all possible subsequent configurations
+    fn step_all(
+        &self,
+        configurations: Vec<Self::ConfigurationType>,
+    ) -> Vec<Self::ConfigurationType>;
 }
