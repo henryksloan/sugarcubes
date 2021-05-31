@@ -59,10 +59,28 @@ async fn main() {
 
     let font = load_ttf_font("./assets/OpenSans-Regular.ttf").await;
 
+    let mut mouse_down = false;
+    let mut selected_state: Option<u32> = None;
+
     loop {
         clear_background(WHITE);
 
         // Process keys, mouse etc.
+        let mouse_position: Vec2 = mouse_position().into();
+        if is_mouse_button_down(MouseButton::Left) {
+            if !mouse_down {
+                mouse_down = true;
+                for (&state, &position) in position_map.iter() {
+                    if mouse_position.abs_diff_eq(position.into(), radius) {
+                        selected_state = Some(state);
+                        break;
+                    }
+                }
+            }
+        } else {
+            mouse_down = false;
+            selected_state = None;
+        }
 
         egui_macroquad::ui(|egui_ctx| {
             egui::Window::new("Simulate Finite Automaton")
@@ -78,6 +96,10 @@ async fn main() {
 
         // Draw things before egui
         for state in fa.automaton.states() {
+            if selected_state == Some(*state) {
+                position_map.insert(*state, (mouse_position.x, mouse_position.y));
+            }
+
             let position = position_map.get(state).unwrap_or(&(0., 0.));
 
             for transition in fa.automaton.transitions_from(*state) {
