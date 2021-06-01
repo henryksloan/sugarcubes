@@ -27,6 +27,7 @@ fn draw_arrow(point: Vec2, angle: f32, size: f32, outlined: bool) {
 
 const INACTIVE_COLOR: Color = Color::new(0.90, 0.93, 0.52, 1.00);
 const ACTIVE_COLOR: Color = Color::new(0.44, 0.45, 0.19, 1.00);
+const SELECTED_COLOR: Color = Color::new(0.45, 0.58, 0.81, 1.00);
 
 #[macroquad::main("Sugarcubes")]
 async fn main() {
@@ -59,6 +60,9 @@ async fn main() {
 
     let mut mouse_down = false;
     let mut selected_state: Option<u32> = None;
+    // The offset of the click relative to the center of the selected state,
+    // so that the mouse "grabs" the state at the point of the initial click
+    let mut state_drag_offset = Vec2::ZERO;
 
     loop {
         clear_background(WHITE);
@@ -71,6 +75,7 @@ async fn main() {
                 for (&state, &position) in position_map.iter() {
                     if mouse_position.abs_diff_eq(position, radius) {
                         selected_state = Some(state);
+                        state_drag_offset = position - mouse_position;
                         break;
                     }
                 }
@@ -82,20 +87,24 @@ async fn main() {
 
         let mut should_step = false;
         egui_macroquad::ui(|egui_ctx| {
-            egui::Window::new("Simulate Finite Automaton")
-                .title_bar(false)
-                .fixed_size((screen_width(), screen_height() / 8.))
-                .anchor(egui::Align2::LEFT_BOTTOM, (0., 0.))
-                .show(egui_ctx, |ui| {
-                    ui.label("Test");
-                    if ui.button("Step").clicked() {}
-                    if ui.button("Step").clicked() {}
-                    if ui.button("Step").clicked() {}
-                    if ui.button("Step").clicked() {
-                        should_step = true;
-                    }
+            egui::TopPanel::top("Sugarcubes").show(egui_ctx, |ui| {
+                egui::menu::bar(ui, |ui| {
+                    egui::menu::menu(ui, "File", |ui| {
+                        if ui.button("Open").clicked() {
+                            // ...
+                        }
+                    });
                 });
+
+                ui.separator();
+
+                ui.label("Simulation Toolbar");
+                if ui.button("Step").clicked() {
+                    should_step = true;
+                }
+            });
         });
+
         if should_step {
             configurations = fa.step_all(configurations);
         }
@@ -103,7 +112,7 @@ async fn main() {
         // Draw things before egui
         for state in fa.automaton.states() {
             if selected_state == Some(*state) {
-                position_map.insert(*state, mouse_position);
+                position_map.insert(*state, mouse_position + state_drag_offset);
             }
 
             let position = position_map.get(state).unwrap_or(&Vec2::ZERO);
@@ -159,7 +168,9 @@ async fn main() {
                 gl.pop_model_matrix();
             }
 
-            let state_color = if configurations
+            let state_color = if selected_state == Some(*state) {
+                SELECTED_COLOR
+            } else if configurations
                 .iter()
                 .any(|configuration| configuration.state() == *state)
             {
