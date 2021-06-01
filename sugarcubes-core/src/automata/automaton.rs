@@ -1,11 +1,11 @@
 use crate::automata::{State, Transition, TransitionSet};
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{btree_map, BTreeMap, HashSet};
 
 /// A generic automaton holding a state graph
 #[derive(Default)]
 pub struct Automaton<T: Transition> {
-    states: HashMap<u32, State>, // Identifies states by an ID
+    states: BTreeMap<u32, State>, // Identifies states by an ID
     transitions: TransitionSet<T>,
     initial_state: Option<u32>,
     final_states: HashSet<u32>,
@@ -23,6 +23,11 @@ impl<T: Transition> Automaton<T> {
 
     pub fn states(&self) -> Vec<&u32> {
         self.states.keys().collect()
+    }
+
+    /// Returns a sorted iterator of the states of the automaton
+    pub fn states_iter(&self) -> btree_map::Keys<u32, State> {
+        self.states.keys()
     }
 
     pub fn transitions_from(&self, from: u32) -> Vec<&T> {

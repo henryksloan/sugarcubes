@@ -29,6 +29,8 @@ const INACTIVE_COLOR: Color = Color::new(0.90, 0.93, 0.52, 1.00);
 const ACTIVE_COLOR: Color = Color::new(0.44, 0.45, 0.19, 1.00);
 const SELECTED_COLOR: Color = Color::new(0.45, 0.58, 0.81, 1.00);
 
+const DOUBLE_CLICK_DELAY: f64 = 0.25;
+
 #[macroquad::main("Sugarcubes")]
 async fn main() {
     let mut fa = FiniteAutomaton::default();
@@ -58,31 +60,55 @@ async fn main() {
 
     let font = load_ttf_font("./assets/OpenSans-Regular.ttf").await;
 
-    let mut mouse_down = false;
     let mut selected_state: Option<u32> = None;
     // The offset of the click relative to the center of the selected state,
     // so that the mouse "grabs" the state at the point of the initial click
     let mut state_drag_offset = Vec2::ZERO;
+
+    let mut last_click_time = 0.;
 
     loop {
         clear_background(WHITE);
 
         // Process keys, mouse etc.
         let mouse_position: Vec2 = mouse_position().into();
-        if is_mouse_button_down(MouseButton::Left) {
-            if !mouse_down {
-                mouse_down = true;
-                for (&state, &position) in position_map.iter() {
+        if is_mouse_button_pressed(MouseButton::Left) {
+            let new_click_time = get_time();
+            // Check for double click
+            if last_click_time > 0. && new_click_time - last_click_time <= DOUBLE_CLICK_DELAY {
+                let mut state_double_clicked_on = None;
+                // Iterate in reverse, so the highest-numbered state is selected first
+                for state in fa.automaton.states_iter().rev() {
+                    let position = *position_map.get(state).unwrap();
                     if mouse_position.abs_diff_eq(position, radius) {
-                        selected_state = Some(state);
+                        state_double_clicked_on = Some(*state);
+                        break;
+                    }
+                }
+
+                if state_double_clicked_on.is_none() {
+                    let new_state = fa.automaton.add_new_state();
+                    position_map.insert(new_state, mouse_position);
+                    selected_state = Some(new_state);
+                    state_drag_offset = Vec2::ZERO;
+                }
+            } else {
+                for state in fa.automaton.states_iter().rev() {
+                    let position = *position_map.get(state).unwrap();
+                    if mouse_position.abs_diff_eq(position, radius) {
+                        selected_state = Some(*state);
                         state_drag_offset = position - mouse_position;
                         break;
                     }
                 }
             }
-        } else {
-            mouse_down = false;
+            last_click_time = new_click_time;
+        } else if !is_mouse_button_down(MouseButton::Left) {
             selected_state = None;
+        }
+
+        if is_mouse_button_pressed(MouseButton::Right) {
+            // TODO: Probably a context menu
         }
 
         let mut should_step = false;
@@ -116,7 +142,8 @@ async fn main() {
             }
         }
 
-        for state in fa.automaton.states() {
+        // Draw states in order of increasing ID, so higher ID states are drawn on top
+        for state in fa.automaton.states_iter() {
             let position = position_map.get(state).unwrap_or(&Vec2::ZERO);
 
             for transition in fa.automaton.transitions_from(*state) {
@@ -137,6 +164,8 @@ async fn main() {
 
                 draw_arrow(point_to, angle, arrow_size, false);
 
+                // Change coordinate systems to be centered on the middle of the transition,
+                // and rotated parallel to the transition, then draw the text
                 let middle = position.lerp(*other_position, 0.5);
                 let font_size = 120.;
                 let symbol_str = &transition.symbol().to_string();
@@ -166,6 +195,7 @@ async fn main() {
                     },
                 );
 
+                // Reset the coordinate system
                 gl.pop_model_matrix();
                 gl.pop_model_matrix();
             }
