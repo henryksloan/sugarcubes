@@ -102,6 +102,54 @@ fn draw_transition_text(from: &Vec2, to: &Vec2, text: String, gl: &mut QuadGl, f
     gl.pop_model_matrix();
 }
 
+fn draw_self_transition(state_position: &Vec2) {
+    let angle = std::f32::consts::FRAC_PI_2 - std::f32::consts::FRAC_PI_6;
+    let point_from =
+        *state_position + vec2(STATE_RADIUS * angle.cos(), -STATE_RADIUS * angle.sin());
+    let point_to = *state_position + vec2(-STATE_RADIUS * angle.cos(), -STATE_RADIUS * angle.sin());
+    let mut prev_point = point_from;
+    let start = vec2(0., 120. * 0.25);
+    for i in 0..=100 {
+        let t = i as f32 * 0.01;
+        let next_point = point_from.lerp(point_to, t) + vec2(0., 120. * (t - 0.5).powi(2)) - start;
+        draw_line(
+            prev_point.x,
+            prev_point.y,
+            next_point.x,
+            next_point.y,
+            2.,
+            BLACK,
+        );
+        prev_point = next_point;
+    }
+
+    draw_arrow(
+        point_from,
+        std::f32::consts::FRAC_PI_2 - std::f32::consts::FRAC_PI_8,
+        ARROW_SIZE,
+        false,
+    );
+}
+
+fn draw_self_transition_with_text(state_position: &Vec2, text: String, font: &Font) {
+    draw_self_transition(state_position);
+
+    let font_size = TRANSITION_FONT_SIZE * 5.;
+    let text_size = measure_text(&text, None, font_size as _, 0.2);
+    draw_text_ex(
+        &text,
+        state_position.x - text_size.width / 2.,
+        state_position.y - STATE_RADIUS - 32.,
+        TextParams {
+            font_size: font_size as _,
+            font_scale: 0.2,
+            font: *font,
+            color: BLACK,
+            ..Default::default()
+        },
+    );
+}
+
 #[macroquad::main("Sugarcubes")]
 async fn main() {
     let mut fa = FiniteAutomaton::default();
@@ -239,15 +287,23 @@ async fn main() {
             let position = position_map.get(state).unwrap_or(&Vec2::ZERO);
 
             for transition in fa.automaton.transitions_from(*state) {
-                let other_position = position_map.get(&transition.to()).unwrap_or(&Vec2::ZERO);
-                draw_transition_with_text(
-                    position,
-                    other_position,
-                    true,
-                    transition.symbol().to_string(),
-                    gl,
-                    &font,
-                )
+                if *state == transition.to() {
+                    draw_self_transition_with_text(
+                        position,
+                        transition.symbol().to_string(),
+                        &font,
+                    );
+                } else {
+                    let other_position = position_map.get(&transition.to()).unwrap_or(&Vec2::ZERO);
+                    draw_transition_with_text(
+                        position,
+                        other_position,
+                        true,
+                        transition.symbol().to_string(),
+                        gl,
+                        &font,
+                    )
+                }
             }
 
             let state_color = if selected_state == Some(*state) {
@@ -289,7 +345,11 @@ async fn main() {
 
         if let Some(from) = creating_transition_from {
             let position = position_map.get(&from).unwrap_or(&Vec2::ZERO);
-            draw_transition(position, &mouse_position, false);
+            if mouse_position.abs_diff_eq(*position, STATE_RADIUS) {
+                draw_self_transition(position);
+            } else {
+                draw_transition(position, &mouse_position, false);
+            }
         }
 
         egui_macroquad::draw();
