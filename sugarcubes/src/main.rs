@@ -114,7 +114,9 @@ async fn main() {
             if selected_state == Some(*state) {
                 position_map.insert(*state, mouse_position + state_drag_offset);
             }
+        }
 
+        for state in fa.automaton.states() {
             let position = position_map.get(state).unwrap_or(&Vec2::ZERO);
 
             for transition in fa.automaton.transitions_from(*state) {
