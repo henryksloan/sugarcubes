@@ -58,7 +58,7 @@ fn draw_transition_with_text(
     from: &Vec2,
     to: &Vec2,
     to_state: bool,
-    text: String,
+    text: Vec<String>,
     gl: &mut QuadGl,
     font: &Font,
 ) {
@@ -66,13 +66,12 @@ fn draw_transition_with_text(
     draw_transition_text(from, to, text, gl, font);
 }
 
-fn draw_transition_text(from: &Vec2, to: &Vec2, text: String, gl: &mut QuadGl, font: &Font) {
+fn draw_transition_text(from: &Vec2, to: &Vec2, text: Vec<String>, gl: &mut QuadGl, font: &Font) {
     // Change coordinate systems to be centered on the middle of the transition,
     // and rotated parallel to the transition, then draw the text
     let angle = vec2(1., 0.).angle_between(*to - *from);
     let middle = from.lerp(*to, 0.5);
     let font_size = TRANSITION_FONT_SIZE * 5.;
-    let text_size = measure_text(&text, None, font_size as _, 0.2);
     gl.push_model_matrix(glam::Mat4::from_translation(glam::vec3(
         middle.x, middle.y, 0.,
     )));
@@ -84,18 +83,21 @@ fn draw_transition_text(from: &Vec2, to: &Vec2, text: String, gl: &mut QuadGl, f
         };
     gl.push_model_matrix(glam::Mat4::from_rotation_z(text_angle));
 
-    draw_text_ex(
-        &text,
-        -text_size.width / 2.,
-        -8.,
-        TextParams {
-            font_size: font_size as _,
-            font_scale: 0.2,
-            font: *font,
-            color: BLACK,
-            ..Default::default()
-        },
-    );
+    for (i, string) in text.iter().enumerate() {
+        let text_size = measure_text(string, None, font_size as _, 0.2);
+        draw_text_ex(
+            string,
+            -text_size.width / 2.,
+            -(8. + 20. * i as f32),
+            TextParams {
+                font_size: font_size as _,
+                font_scale: 0.2,
+                font: *font,
+                color: BLACK,
+                ..Default::default()
+            },
+        );
+    }
 
     // Reset the coordinate system
     gl.pop_model_matrix();
@@ -131,23 +133,25 @@ fn draw_self_transition(state_position: &Vec2) {
     );
 }
 
-fn draw_self_transition_with_text(state_position: &Vec2, text: String, font: &Font) {
+fn draw_self_transition_with_text(state_position: &Vec2, text: Vec<String>, font: &Font) {
     draw_self_transition(state_position);
 
     let font_size = TRANSITION_FONT_SIZE * 5.;
-    let text_size = measure_text(&text, None, font_size as _, 0.2);
-    draw_text_ex(
-        &text,
-        state_position.x - text_size.width / 2.,
-        state_position.y - STATE_RADIUS - 32.,
-        TextParams {
-            font_size: font_size as _,
-            font_scale: 0.2,
-            font: *font,
-            color: BLACK,
-            ..Default::default()
-        },
-    );
+    for (i, string) in text.iter().enumerate() {
+        let text_size = measure_text(string, None, font_size as _, 0.2);
+        draw_text_ex(
+            string,
+            state_position.x - text_size.width / 2.,
+            state_position.y - STATE_RADIUS - 32. - 20. * i as f32,
+            TextParams {
+                font_size: font_size as _,
+                font_scale: 0.2,
+                font: *font,
+                color: BLACK,
+                ..Default::default()
+            },
+        );
+    }
 }
 
 #[macroquad::main("Sugarcubes")]
@@ -163,6 +167,8 @@ async fn main() {
         .add_transition(FiniteAutomatonTransition::new(state0, state1, 'x'));
     fa.automaton
         .add_transition(FiniteAutomatonTransition::new(state0, state2, EMPTY_STRING));
+    fa.automaton
+        .add_transition(FiniteAutomatonTransition::new(state1, state1, 'a'));
 
     let mut configurations = fa.initial_configurations("xabc");
 
@@ -286,23 +292,25 @@ async fn main() {
         for state in fa.automaton.states_iter() {
             let position = position_map.get(state).unwrap_or(&Vec2::ZERO);
 
-            for transition in fa.automaton.transitions_from(*state) {
-                if *state == transition.to() {
-                    draw_self_transition_with_text(
-                        position,
-                        transition.symbol().to_string(),
-                        &font,
-                    );
+            // TODO: Two states with transitions to each other need curved transitions
+
+            // Group transition symbols by the state the transition leads to,
+            // so multiple transitions to the same state will display as stacked symbols
+            let symbols_by_other_state = fa.automaton.transitions_from(*state).into_iter().fold(
+                HashMap::new(),
+                |mut map: HashMap<u32, Vec<String>>, transition| {
+                    map.entry(transition.to())
+                        .or_default()
+                        .push(transition.symbol().to_string());
+                    map
+                },
+            );
+            for (other_state, symbols) in symbols_by_other_state {
+                if *state == other_state {
+                    draw_self_transition_with_text(position, symbols, &font);
                 } else {
-                    let other_position = position_map.get(&transition.to()).unwrap_or(&Vec2::ZERO);
-                    draw_transition_with_text(
-                        position,
-                        other_position,
-                        true,
-                        transition.symbol().to_string(),
-                        gl,
-                        &font,
-                    )
+                    let other_position = position_map.get(&other_state).unwrap_or(&Vec2::ZERO);
+                    draw_transition_with_text(position, other_position, true, symbols, gl, &font)
                 }
             }
 

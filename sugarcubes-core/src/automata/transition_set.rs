@@ -6,6 +6,7 @@ use std::collections::{HashMap, HashSet};
 /// A collection of transitions with auxiliary maps
 #[derive(Default)]
 pub struct TransitionSet<T: Transition> {
+    // TODO: Transitions from a given state to another should stay in the order in which they were inserted
     transitions: SlotMap<DefaultKey, T>,
     transitions_from: HashMap<u32, HashSet<DefaultKey>>, // Transitions coming from a given state
     transitions_to: HashMap<u32, HashSet<DefaultKey>>,   // Transitions going into a given state
@@ -13,6 +14,10 @@ pub struct TransitionSet<T: Transition> {
 
 impl<T: Transition> TransitionSet<T> {
     pub fn add_transition(&mut self, transition: T) {
+        if self.has_transition(&transition) {
+            return;
+        }
+
         let (from, to) = (transition.from(), transition.to());
         let key = self.transitions.insert(transition);
         self.transitions_from.entry(from).or_default().insert(key);
@@ -48,5 +53,15 @@ impl<T: Transition> TransitionSet<T> {
         self.transitions_to
             .get(&to)
             .expect("no transitions_to for state")
+    }
+
+    fn has_transition(&self, transition: &T) -> bool {
+        if let Some(set_from) = self.transitions_from.get(&transition.from()) {
+            set_from
+                .into_iter()
+                .any(|key| *self.transitions.get(*key).unwrap() == *transition)
+        } else {
+            false
+        }
     }
 }
