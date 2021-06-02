@@ -29,6 +29,17 @@ impl<T: Transition> TransitionSet<T> {
         self.transitions_to.entry(state).or_default();
     }
 
+    /// Returns whether two states both have transitions to the other
+    pub fn states_have_loop(&self, state0: u32, state1: u32) -> bool {
+        self.from(state0)
+            .into_iter()
+            .any(|transition| transition.to() == state1)
+            && self
+                .to(state0)
+                .into_iter()
+                .any(|transition| transition.from() == state1)
+    }
+
     pub fn from(&self, from: u32) -> Vec<&T> {
         self.keys_from(from)
             .iter()
