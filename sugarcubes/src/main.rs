@@ -5,7 +5,7 @@ use crate::{states::*, transitions::*};
 
 use sugarcubes_core::automata::{
     finite_automaton::{FiniteAutomaton, FiniteAutomatonTransition},
-    Configuration, SimulateAutomaton, Transition, EMPTY_STRING,
+    SimulateAutomaton, Transition, EMPTY_STRING,
 };
 
 use macroquad::prelude::*;
@@ -20,6 +20,7 @@ async fn main() {
     let s0 = states.add_state(&mut fa, vec2(200., 300.));
     let s1 = states.add_state(&mut fa, vec2(400., 200.));
     let s2 = states.add_state(&mut fa, vec2(400., 400.));
+    let s3 = states.add_state(&mut fa, vec2(600., 400.));
 
     fa.automaton.set_initial(s0);
     fa.automaton.set_final(s2, true);
@@ -30,6 +31,12 @@ async fn main() {
         .add_transition(FiniteAutomatonTransition::new(s0, s2, EMPTY_STRING));
     fa.automaton
         .add_transition(FiniteAutomatonTransition::new(s1, s1, 'a'));
+    fa.automaton
+        .add_transition(FiniteAutomatonTransition::new(s1, s2, 'a'));
+    fa.automaton
+        .add_transition(FiniteAutomatonTransition::new(s2, s3, 'b'));
+    fa.automaton
+        .add_transition(FiniteAutomatonTransition::new(s3, s2, 'c'));
 
     let mut configurations = fa.initial_configurations("xabc");
 
@@ -143,10 +150,12 @@ async fn main() {
                 },
             );
 
-            // TODO: Two states with transitions to each other need curved transitions
             for (other_state, symbols) in symbols_by_other_state {
                 if *state == other_state {
                     draw_self_transition_with_text(&position, symbols, &font);
+                } else if fa.automaton.states_have_loop(*state, other_state) {
+                    let other_position = states.get_position(other_state);
+                    draw_curved_transition_with_text(&position, other_position, symbols, gl, &font)
                 } else {
                     let other_position = states.get_position(other_state);
                     draw_transition_with_text(&position, other_position, true, symbols, gl, &font)

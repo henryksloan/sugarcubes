@@ -5,6 +5,10 @@ use macroquad::prelude::*;
 pub const ARROW_SIZE: f32 = 17.;
 pub const TRANSITION_FONT_SIZE: f64 = 24.;
 
+// The number of steps used to approximate curves
+const TRANSITION_POINTS: usize = 40;
+const SELF_TRANSITION_POINTS: usize = 20;
+
 // Draw an arrow with its tip at a given point,
 // at a given angle relative to the horizontal,
 // and with a given sidelength
@@ -50,12 +54,14 @@ pub fn draw_transition_with_text(
     font: &Font,
 ) {
     draw_transition(from, to, to_state);
-    draw_transition_text(from, to, text, gl, font);
+    draw_transition_text(from, to, false, false, text, gl, font);
 }
 
 pub fn draw_transition_text(
     from: &Vec2,
     to: &Vec2,
+    curved: bool,
+    down: bool,
     text: Vec<String>,
     gl: &mut QuadGl,
     font: &Font,
@@ -76,12 +82,14 @@ pub fn draw_transition_text(
         };
     gl.push_model_matrix(glam::Mat4::from_rotation_z(text_angle));
 
+    let direction = if down { 1. } else { -1. };
+    let initial_y_offset = if curved { 32. } else { 8. } + (direction + 1.) * 4.;
     for (i, string) in text.iter().enumerate() {
         let text_size = measure_text(string, None, font_size as _, 0.2);
         draw_text_ex(
             string,
             -text_size.width / 2.,
-            -(8. + 20. * i as f32),
+            direction * (initial_y_offset + 20. * i as f32),
             TextParams {
                 font_size: font_size as _,
                 font_scale: 0.2,
@@ -97,6 +105,57 @@ pub fn draw_transition_text(
     gl.pop_model_matrix();
 }
 
+pub fn draw_curved_transition(from: &Vec2, to: &Vec2) {
+    let angle = vec2(1., 0.).angle_between(*to - *from);
+    let distance = from.distance(*to);
+    let radius_over_distance = STATE_RADIUS / distance;
+    let point_from = from.lerp(*to, radius_over_distance);
+    let point_to = to.lerp(*from, radius_over_distance);
+    let mut prev_point = point_from;
+    let start = vec2(
+        (angle + std::f32::consts::FRAC_PI_2).cos(),
+        (angle + std::f32::consts::FRAC_PI_2).sin(),
+    ) * (80. * 0.25);
+    let mut final_angle = 0.;
+    for i in 0..=TRANSITION_POINTS {
+        let t = i as f32 / (TRANSITION_POINTS as f32);
+        let y = 80. * (t - 0.5).powi(2);
+        let next_point = point_from.lerp(point_to, t)
+            + vec2(
+                y * (angle + std::f32::consts::FRAC_PI_2).cos(),
+                y * (angle + std::f32::consts::FRAC_PI_2).sin(),
+            )
+            - start;
+        draw_line(
+            prev_point.x,
+            prev_point.y,
+            next_point.x,
+            next_point.y,
+            2.,
+            BLACK,
+        );
+
+        if i == TRANSITION_POINTS {
+            final_angle = vec2(1., 0.).angle_between(next_point - prev_point);
+        }
+
+        prev_point = next_point;
+    }
+    draw_arrow(point_to, final_angle, ARROW_SIZE, false);
+}
+
+pub fn draw_curved_transition_with_text(
+    from: &Vec2,
+    to: &Vec2,
+    text: Vec<String>,
+    gl: &mut QuadGl,
+    font: &Font,
+) {
+    let down = (vec2(1., 0.).angle_between(*to - *from)).abs() > std::f32::consts::FRAC_PI_2;
+    draw_curved_transition(from, to);
+    draw_transition_text(from, to, true, down, text, gl, font);
+}
+
 pub fn draw_self_transition(state_position: &Vec2) {
     let angle = std::f32::consts::FRAC_PI_2 - std::f32::consts::FRAC_PI_6;
     let point_from =
@@ -104,8 +163,8 @@ pub fn draw_self_transition(state_position: &Vec2) {
     let point_to = *state_position + vec2(-STATE_RADIUS * angle.cos(), -STATE_RADIUS * angle.sin());
     let mut prev_point = point_from;
     let start = vec2(0., 120. * 0.25);
-    for i in 0..=100 {
-        let t = i as f32 * 0.01;
+    for i in 0..=SELF_TRANSITION_POINTS {
+        let t = i as f32 / (SELF_TRANSITION_POINTS as f32);
         let next_point = point_from.lerp(point_to, t) + vec2(0., 120. * (t - 0.5).powi(2)) - start;
         draw_line(
             prev_point.x,
