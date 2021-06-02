@@ -50,4 +50,14 @@ impl SimulateAutomaton for FiniteAutomaton {
         }
         new_configurations
     }
+
+    fn step_all(
+        &self,
+        configurations: Vec<Self::ConfigurationType>,
+    ) -> Vec<Self::ConfigurationType> {
+        configurations
+            .into_iter()
+            .flat_map(|configuration| self.step(configuration))
+            .collect()
+    }
 }
