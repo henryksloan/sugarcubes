@@ -89,7 +89,7 @@ pub fn draw_transition_text(
         draw_text_ex(
             string,
             -text_size.width / 2.,
-            direction * (initial_y_offset + 20. * i as f32),
+            direction * (initial_y_offset + 23. * i as f32),
             TextParams {
                 font_size: font_size as _,
                 font_scale: 0.2,
@@ -107,10 +107,15 @@ pub fn draw_transition_text(
 
 pub fn draw_curved_transition(from: &Vec2, to: &Vec2) {
     let angle = vec2(1., 0.).angle_between(*to - *from);
-    let distance = from.distance(*to);
-    let radius_over_distance = STATE_RADIUS / distance;
-    let point_from = from.lerp(*to, radius_over_distance);
-    let point_to = to.lerp(*from, radius_over_distance);
+    let angle_on_state = 0.12;
+    let angle_from = angle - angle_on_state;
+    let angle_to = angle + angle_on_state;
+    let point_from = *from
+        + vec2(
+            STATE_RADIUS * angle_from.cos(),
+            STATE_RADIUS * angle_from.sin(),
+        );
+    let point_to = *to - vec2(STATE_RADIUS * angle_to.cos(), STATE_RADIUS * angle_to.sin());
     let mut prev_point = point_from;
     let start = vec2(
         (angle + std::f32::consts::FRAC_PI_2).cos(),
