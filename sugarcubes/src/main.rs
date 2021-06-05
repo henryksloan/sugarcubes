@@ -9,14 +9,27 @@ use sugarcubes_core::automata::{
 };
 
 use macroquad::prelude::*;
-use macroquad::ui::{hash, root_ui, widgets};
+use macroquad::ui::{hash, root_ui, widgets, Skin};
 use std::collections::HashMap;
 
 const DOUBLE_CLICK_DELAY: f64 = 0.25;
 
 #[macroquad::main("Sugarcubes")]
 async fn main() {
-    let transition_input_size = vec2(200., 25.);
+    let transition_input_size = vec2(150., 36.);
+
+    let editbox_skin = {
+        let editbox_style = root_ui()
+            .style_builder()
+            .font_size(25)
+            .margin(RectOffset::new(0., 0., 5., 0.))
+            .font(include_bytes!("../../assets/OpenSans-Regular.ttf"))
+            .build();
+        Skin {
+            editbox_style,
+            ..root_ui().default_skin()
+        }
+    };
 
     let mut fa = FiniteAutomaton::default();
     let mut states = States::new();
@@ -182,6 +195,7 @@ async fn main() {
         }
 
         if let Some(editing_transition) = &mut editing_transition {
+            root_ui().push_skin(&editbox_skin);
             widgets::Window::new(
                 hash!("win", editing_transition.2, editing_transition.3),
                 editing_transition.0,
@@ -195,6 +209,7 @@ async fn main() {
                     &mut editing_transition.1,
                 );
             });
+            root_ui().pop_skin();
         }
 
         if let Some(tuple) = editing_transition.clone() {
