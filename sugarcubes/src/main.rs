@@ -9,6 +9,7 @@ use sugarcubes_core::automata::{
 };
 
 use macroquad::prelude::*;
+use macroquad::ui::{hash, root_ui, widgets};
 use std::collections::HashMap;
 
 const DOUBLE_CLICK_DELAY: f64 = 0.25;
@@ -52,6 +53,9 @@ async fn main() {
     // If the user is drawing a new transition starting on a state, its ID is in here
     let mut creating_transition_from: Option<u32> = None;
 
+    // If the user is editing a transition, this holds its (position, text, state_from, state_to)
+    let mut editing_transition: Option<(Vec2, String, u32, u32)> = None;
+
     let mut last_click_time = 0.;
 
     loop {
@@ -90,11 +94,12 @@ async fn main() {
             // connect the two states
             if let Some(from) = creating_transition_from {
                 if let Some(to) = states.point_in_some_state(mouse_position, &fa) {
-                    fa.automaton.add_transition(FiniteAutomatonTransition::new(
-                        from,
-                        to,
-                        EMPTY_STRING, // TODO: Add a symbol (at an angle?)
-                    ));
+                    let middle = {
+                        let position_from = *states.get_position(from);
+                        let position_to = *states.get_position(to);
+                        position_from.lerp(position_to, 0.5)
+                    };
+                    editing_transition = Some((middle, "".to_string(), from, to));
                 }
             }
 
@@ -171,6 +176,38 @@ async fn main() {
                 draw_self_transition(position);
             } else {
                 draw_transition(position, &mouse_position, false);
+            }
+        }
+
+        if let Some(editing_transition) = &mut editing_transition {
+            widgets::Window::new(
+                hash!("win", editing_transition.2, editing_transition.3),
+                editing_transition.0,
+                vec2(200., 25.),
+            )
+            .titlebar(false)
+            .ui(&mut *root_ui(), |ui| {
+                ui.input_text(
+                    hash!(editing_transition.2, editing_transition.3),
+                    "",
+                    &mut editing_transition.1,
+                );
+            });
+        }
+
+        if let Some(tuple) = editing_transition.clone() {
+            if is_key_pressed(KeyCode::Enter)
+                || (is_mouse_button_pressed(MouseButton::Left)
+                    && !root_ui().is_mouse_over(mouse_position))
+            {
+                fa.automaton.add_transition(FiniteAutomatonTransition::new(
+                    tuple.2,
+                    tuple.3,
+                    tuple.1.chars().next().unwrap_or(EMPTY_STRING),
+                ));
+                editing_transition = None;
+            } else if is_key_pressed(KeyCode::Escape) {
+                editing_transition = None;
             }
         }
 
