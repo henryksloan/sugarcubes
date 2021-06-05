@@ -16,6 +16,8 @@ const DOUBLE_CLICK_DELAY: f64 = 0.25;
 
 #[macroquad::main("Sugarcubes")]
 async fn main() {
+    let transition_input_size = vec2(200., 25.);
+
     let mut fa = FiniteAutomaton::default();
     let mut states = States::new();
     let s0 = states.add_state(&mut fa, vec2(200., 300.));
@@ -98,7 +100,7 @@ async fn main() {
                         let position_from = *states.get_position(from);
                         let position_to = *states.get_position(to);
                         position_from.lerp(position_to, 0.5)
-                    };
+                    } - transition_input_size / 2.;
                     editing_transition = Some((middle, "".to_string(), from, to));
                 }
             }
@@ -183,7 +185,7 @@ async fn main() {
             widgets::Window::new(
                 hash!("win", editing_transition.2, editing_transition.3),
                 editing_transition.0,
-                vec2(200., 25.),
+                transition_input_size,
             )
             .titlebar(false)
             .ui(&mut *root_ui(), |ui| {
