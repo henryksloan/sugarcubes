@@ -43,6 +43,11 @@ impl States {
         state
     }
 
+    pub fn remove_state(&mut self, fa: &mut FiniteAutomaton, state: u32) {
+        fa.automaton.remove_state(state);
+        self.position_map.remove(&state);
+    }
+
     pub fn point_in_state(&self, point: Vec2, state: u32) -> bool {
         let position = *self.position_map.get(&state).unwrap();
         point.abs_diff_eq(position, STATE_RADIUS)

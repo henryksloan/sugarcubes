@@ -29,6 +29,44 @@ impl<T: Transition> TransitionSet<T> {
         self.transitions_to.entry(state).or_default();
     }
 
+    pub fn unregister_state(&mut self, state: u32) {
+        // Find all transitions containing the state
+        let transitions_from = self
+            .transitions_from
+            .get(&state)
+            .cloned()
+            .unwrap_or_default();
+        let transitions_to = self.transitions_to.get(&state).cloned().unwrap_or_default();
+
+        // Unregister the state in the auxiliary maps
+        self.transitions_from.remove(&state);
+        self.transitions_to.remove(&state);
+
+        // Follow the maps and unregister the entry in the opposite direction
+        for key in &transitions_from {
+            if let Some(transition) = self.transitions.get(*key) {
+                if let Some(transitions_to) = self.transitions_to.get_mut(&transition.to()) {
+                    transitions_to.remove(&key);
+                }
+            }
+        }
+
+        for key in &transitions_to {
+            if let Some(transition) = self.transitions.get(*key) {
+                if let Some(transitions_from) = self.transitions_from.get_mut(&transition.from()) {
+                    transitions_from.remove(&key);
+                }
+            }
+        }
+
+        // Remove the actual transitions
+        for &key in transitions_from.union(&transitions_to) {
+            if self.transitions.contains_key(key) {
+                self.transitions.remove(key);
+            }
+        }
+    }
+
     /// Returns whether two states both have transitions to the other
     pub fn states_have_loop(&self, state0: u32, state1: u32) -> bool {
         self.from(state0)

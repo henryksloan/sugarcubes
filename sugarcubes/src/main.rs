@@ -108,7 +108,9 @@ async fn main() {
         }
 
         if is_mouse_button_released(MouseButton::Left) {
-            selected_state = None;
+            if dragging_selected {
+                selected_state = None;
+            }
 
             // If the user releases over a state while creating a transition,
             // connect the two states
@@ -127,12 +129,13 @@ async fn main() {
         }
 
         if !mouse_over_egui && is_mouse_button_pressed(MouseButton::Right) {
-            // TODO: Probably a context menu
             open_context_menu = true;
             context_menu_pos = mouse_position;
             if let Some(state) = states.point_in_some_state(mouse_position, &fa) {
                 selected_state = Some(state);
                 dragging_selected = false;
+            } else {
+                selected_state = None;
             }
         }
 
@@ -179,6 +182,10 @@ async fn main() {
                                     |ui| {
                                         ui.set_width(100.0 - 2.0 * frame_margin.x);
                                         if ui.button("Delete").clicked() {
+                                            if let Some(selected) = selected_state {
+                                                states.remove_state(&mut fa, selected);
+                                            }
+                                            selected_state = None;
                                             ui.memory().close_popup();
                                         }
                                         mouse_over_egui |= ui.ui_contains_pointer();
@@ -191,6 +198,7 @@ async fn main() {
                         || area_response.clicked_elsewhere()
                     {
                         ui.memory().close_popup();
+                        selected_state = None;
                     }
 
                     mouse_over_egui |= ui.ui_contains_pointer();

@@ -21,6 +21,17 @@ impl<T: Transition> Automaton<T> {
         id
     }
 
+    pub fn remove_state(&mut self, id: u32) {
+        self.states.remove(&id);
+        self.transitions.unregister_state(id);
+
+        // Clean up any invalid data
+        if self.initial_state == Some(id) {
+            self.initial_state = None;
+        }
+        self.final_states.remove(&id);
+    }
+
     pub fn states(&self) -> Vec<&u32> {
         self.states.keys().collect()
     }
