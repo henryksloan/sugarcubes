@@ -5,7 +5,7 @@ use crate::{states::*, transitions::*};
 
 use sugarcubes_core::automata::{
     finite_automaton::{FiniteAutomaton, FiniteAutomatonTransition},
-    SimulateAutomaton, Transition, EMPTY_STRING,
+    Configuration, SimulateAutomaton, Transition, EMPTY_STRING,
 };
 
 use macroquad::prelude::*;
@@ -182,14 +182,6 @@ async fn main() {
                                     |ui| {
                                         ui.set_width(100.0 - 2.0 * frame_margin.x);
                                         if let Some(selected) = selected_state {
-                                            if ui.button("Delete").clicked() {
-                                                if let Some(selected) = selected_state {
-                                                    states.remove_state(&mut fa, selected);
-                                                }
-                                                selected_state = None;
-                                                ui.memory().close_popup();
-                                            }
-
                                             let mut is_initial =
                                                 fa.automaton.initial() == Some(selected);
                                             if ui.checkbox(&mut is_initial, "Initial").changed() {
@@ -197,6 +189,25 @@ async fn main() {
                                                     fa.automaton.set_initial(selected);
                                                 } else {
                                                     fa.automaton.remove_initial();
+                                                }
+                                                selected_state = None;
+                                                ui.memory().close_popup();
+                                            }
+
+                                            let mut is_final = fa.automaton.is_final(selected);
+                                            if ui.checkbox(&mut is_final, "Final").changed() {
+                                                fa.automaton.set_final(selected, is_final);
+                                                selected_state = None;
+                                                ui.memory().close_popup();
+                                            }
+
+                                            ui.separator();
+
+                                            if ui.button("Delete").clicked() {
+                                                if let Some(selected) = selected_state {
+                                                    states.remove_state(&mut fa, selected);
+                                                    configurations
+                                                        .retain(|conf| conf.state() != selected);
                                                 }
                                                 selected_state = None;
                                                 ui.memory().close_popup();
