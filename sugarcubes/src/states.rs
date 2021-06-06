@@ -13,6 +13,7 @@ pub const ACTIVE_COLOR: Color = Color::new(0.44, 0.45, 0.19, 1.00);
 pub const SELECTED_COLOR: Color = Color::new(0.45, 0.58, 0.81, 1.00);
 
 pub const STATE_RADIUS: f32 = 35.;
+pub const STATE_SIDES: u8 = 35;
 pub const FINAL_STATE_CIRCLE_RATIO: f32 = 0.85;
 pub const INITIAL_ARROW_SIZE: f32 = 24.;
 pub const STATE_FONT_SIZE: f64 = 30.;
@@ -73,17 +74,27 @@ impl States {
         } else {
             INACTIVE_COLOR
         };
-        draw_circle(position.x, position.y, STATE_RADIUS, state_color);
-        draw_circle_lines(position.x, position.y, STATE_RADIUS + 0.5, 2., BLACK);
+        draw_poly(
+            position.x,
+            position.y,
+            STATE_SIDES,
+            STATE_RADIUS,
+            0.,
+            state_color,
+        );
+        draw_poly_lines(
+            position.x,
+            position.y,
+            STATE_SIDES,
+            STATE_RADIUS + 0.5,
+            0.,
+            2.,
+            BLACK,
+        );
 
         if is_final {
-            draw_circle_lines(
-                position.x,
-                position.y,
-                STATE_RADIUS * FINAL_STATE_CIRCLE_RATIO,
-                2.,
-                BLACK,
-            );
+            let r = STATE_RADIUS * FINAL_STATE_CIRCLE_RATIO;
+            draw_poly_lines(position.x, position.y, STATE_SIDES, r, 0., 2., BLACK);
         }
 
         if is_initial {

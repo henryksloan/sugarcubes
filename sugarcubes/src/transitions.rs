@@ -83,7 +83,11 @@ pub fn draw_transition_text(
     gl.push_model_matrix(glam::Mat4::from_rotation_z(text_angle));
 
     let direction = if down { 1. } else { -1. };
-    let initial_y_offset = if curved { 32. } else { 8. } + (direction + 1.) * 4.;
+    let initial_y_offset = if curved {
+        32. + if direction > 0. { 16. } else { 0. }
+    } else {
+        8. + if direction > 0. { 4. } else { 0. }
+    };
     for (i, string) in text.iter().enumerate() {
         let text_size = measure_text(string, None, font_size as _, 0.2);
         draw_text_ex(
