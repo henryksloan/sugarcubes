@@ -166,10 +166,11 @@ async fn main() {
                     ui.memory().open_popup(popup_id);
                     open_context_menu = false;
                 }
+                let mut mouse_in_popup = false;
                 if ui.memory().is_popup_open(popup_id) {
                     let parent_clip_rect = ui.clip_rect();
 
-                    let area_response = egui::Area::new(popup_id)
+                    egui::Area::new(popup_id)
                         .order(egui::Order::Foreground)
                         .fixed_pos((context_menu_pos.x, context_menu_pos.y))
                         .show(ui.ctx(), |ui| {
@@ -206,6 +207,7 @@ async fn main() {
                                             if ui.button("Delete").clicked() {
                                                 if let Some(selected) = selected_state {
                                                     states.remove_state(&mut fa, selected);
+                                                    // TODO: This won't be necessary once editing and simulation modes are separated
                                                     configurations
                                                         .retain(|conf| conf.state() != selected);
                                                 }
@@ -214,17 +216,24 @@ async fn main() {
                                             }
                                         }
 
-                                        mouse_over_egui |= ui.ui_contains_pointer();
+                                        mouse_in_popup = ui.ui_contains_pointer();
+                                        mouse_over_egui |= mouse_in_popup;
                                     },
                                 );
                             });
                         });
 
-                    if ui.input().key_pressed(egui::Key::Escape)
-                        || area_response.clicked_elsewhere()
-                    {
+                    if ui.input().key_pressed(egui::Key::Escape) {
                         ui.memory().close_popup();
-                        selected_state = None;
+                    } else if is_mouse_button_pressed(MouseButton::Left) && !mouse_in_popup {
+                        ui.memory().close_popup();
+
+                        // Clear selected state if the cancelling click is not in the selected state
+                        if let Some(selected) = selected_state {
+                            if !states.point_in_state(mouse_position, selected) {
+                                selected_state = None;
+                            }
+                        }
                     }
 
                     mouse_over_egui |= ui.ui_contains_pointer();
