@@ -1,4 +1,6 @@
 # Sugarcubes
+https://henryksloan.github.io/sugarcubes/
+
 Sugarcubes is a library and application for automata and formal languages. It is inspired by JFLAP, and is intended to eventually to be an alternative to JFLAP.
 
 ![Screenshot of a finite automaton in Sugarcubes](screenshots/Sugarcubes.png)
