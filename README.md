@@ -32,8 +32,7 @@ Sugarcubes is in a very early stage of development, having only basic support fo
 
 ## Next steps
 * Usable FA edit mode
-    * Context menu for deletion, naming, labelling, changing transition symbols
-    * Setting states to initial or final
+    * Editing and deleting transitions with the context menu
     * State naming, labels (should these JFLAP features be merged?)
     * Undo/redo system
         * Command pattern
