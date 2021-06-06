@@ -181,13 +181,28 @@ async fn main() {
                                     egui::Layout::top_down_justified(egui::Align::LEFT),
                                     |ui| {
                                         ui.set_width(100.0 - 2.0 * frame_margin.x);
-                                        if ui.button("Delete").clicked() {
-                                            if let Some(selected) = selected_state {
-                                                states.remove_state(&mut fa, selected);
+                                        if let Some(selected) = selected_state {
+                                            if ui.button("Delete").clicked() {
+                                                if let Some(selected) = selected_state {
+                                                    states.remove_state(&mut fa, selected);
+                                                }
+                                                selected_state = None;
+                                                ui.memory().close_popup();
                                             }
-                                            selected_state = None;
-                                            ui.memory().close_popup();
+
+                                            let mut is_initial =
+                                                fa.automaton.initial() == Some(selected);
+                                            if ui.checkbox(&mut is_initial, "Initial").changed() {
+                                                if is_initial {
+                                                    fa.automaton.set_initial(selected);
+                                                } else {
+                                                    fa.automaton.remove_initial();
+                                                }
+                                                selected_state = None;
+                                                ui.memory().close_popup();
+                                            }
                                         }
+
                                         mouse_over_egui |= ui.ui_contains_pointer();
                                     },
                                 );
