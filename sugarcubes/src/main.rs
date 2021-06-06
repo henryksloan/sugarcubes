@@ -72,14 +72,14 @@ async fn main() {
     let mut editing_transition: Option<(Vec2, String, u32, u32)> = None;
 
     let mut last_click_time = 0.;
+    let mut mouse_over_egui = false;
 
     loop {
         clear_background(WHITE);
 
         // Process keys, mouse etc.
-        // TODO: Ignore clicks on egui elements
         let mouse_position: Vec2 = mouse_position().into();
-        if is_mouse_button_pressed(MouseButton::Left) {
+        if !mouse_over_egui && is_mouse_button_pressed(MouseButton::Left) {
             let new_click_time = get_time();
 
             // Check for double click
@@ -121,7 +121,7 @@ async fn main() {
             creating_transition_from = None;
         }
 
-        if is_mouse_button_pressed(MouseButton::Right) {
+        if !mouse_over_egui && is_mouse_button_pressed(MouseButton::Right) {
             // TODO: Probably a context menu
         }
 
@@ -142,6 +142,8 @@ async fn main() {
                 if ui.button("Step").clicked() {
                     should_step = true;
                 }
+
+                mouse_over_egui = ui.ui_contains_pointer();
             });
         });
 
