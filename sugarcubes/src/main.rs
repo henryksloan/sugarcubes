@@ -64,6 +64,7 @@ async fn main() {
     // so that the mouse "grabs" the state at the point of the initial click
     let mut state_drag_offset = Vec2::ZERO;
     let mut selected_state: Option<u32> = None;
+    let mut dragging_selected = false;
 
     // If the user is drawing a new transition starting on a state, its ID is in here
     let mut creating_transition_from: Option<u32> = None;
@@ -73,6 +74,8 @@ async fn main() {
 
     let mut last_click_time = 0.;
     let mut mouse_over_egui = false;
+    let mut open_context_menu = false;
+    let mut context_menu_pos = Vec2::ZERO;
 
     loop {
         clear_background(WHITE);
@@ -91,11 +94,13 @@ async fn main() {
                 } else {
                     selected_state = Some(states.add_state(&mut fa, mouse_position));
                     state_drag_offset = Vec2::ZERO;
+                    dragging_selected = true;
                 }
             } else {
                 if let Some(state) = states.point_in_some_state(mouse_position, &fa) {
                     selected_state = Some(state);
                     state_drag_offset = *states.get_position(state) - mouse_position;
+                    dragging_selected = true;
                 }
             }
 
@@ -123,6 +128,12 @@ async fn main() {
 
         if !mouse_over_egui && is_mouse_button_pressed(MouseButton::Right) {
             // TODO: Probably a context menu
+            open_context_menu = true;
+            context_menu_pos = mouse_position;
+            if let Some(state) = states.point_in_some_state(mouse_position, &fa) {
+                selected_state = Some(state);
+                dragging_selected = false;
+            }
         }
 
         let mut should_step = false;
@@ -145,6 +156,46 @@ async fn main() {
 
                 mouse_over_egui = ui.ui_contains_pointer();
             });
+
+            egui::Area::new("my_area").show(egui_ctx, |ui| {
+                let popup_id = ui.make_persistent_id("context_menu_id");
+                if open_context_menu {
+                    ui.memory().open_popup(popup_id);
+                    open_context_menu = false;
+                }
+                if ui.memory().is_popup_open(popup_id) {
+                    let parent_clip_rect = ui.clip_rect();
+
+                    let area_response = egui::Area::new(popup_id)
+                        .order(egui::Order::Foreground)
+                        .fixed_pos((context_menu_pos.x, context_menu_pos.y))
+                        .show(ui.ctx(), |ui| {
+                            ui.set_clip_rect(parent_clip_rect);
+                            let frame = egui::Frame::popup(ui.style());
+                            let frame_margin = frame.margin;
+                            frame.show(ui, |ui| {
+                                ui.with_layout(
+                                    egui::Layout::top_down_justified(egui::Align::LEFT),
+                                    |ui| {
+                                        ui.set_width(100.0 - 2.0 * frame_margin.x);
+                                        if ui.button("Delete").clicked() {
+                                            ui.memory().close_popup();
+                                        }
+                                        mouse_over_egui |= ui.ui_contains_pointer();
+                                    },
+                                );
+                            });
+                        });
+
+                    if ui.input().key_pressed(egui::Key::Escape)
+                        || area_response.clicked_elsewhere()
+                    {
+                        ui.memory().close_popup();
+                    }
+
+                    mouse_over_egui |= ui.ui_contains_pointer();
+                }
+            });
         });
 
         if should_step {
@@ -153,7 +204,9 @@ async fn main() {
 
         // Draw things before egui
         if let Some(selected) = selected_state {
-            states.insert_position(selected, mouse_position + state_drag_offset);
+            if dragging_selected {
+                states.insert_position(selected, mouse_position + state_drag_offset);
+            }
         }
 
         // Draw states in order of increasing ID, so higher ID states are drawn on top
