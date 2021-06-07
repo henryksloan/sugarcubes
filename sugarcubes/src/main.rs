@@ -50,9 +50,17 @@ async fn main() {
     fa.automaton
         .add_transition(FiniteAutomatonTransition::new(s1, s2, 'a'));
     fa.automaton
+        .add_transition(FiniteAutomatonTransition::new(s1, s2, 'b'));
+    fa.automaton
         .add_transition(FiniteAutomatonTransition::new(s2, s3, 'b'));
     fa.automaton
         .add_transition(FiniteAutomatonTransition::new(s3, s2, 'c'));
+    fa.automaton
+        .add_transition(FiniteAutomatonTransition::new(s3, s2, 'f'));
+    fa.automaton
+        .add_transition(FiniteAutomatonTransition::new(s3, s3, 'd'));
+    fa.automaton
+        .add_transition(FiniteAutomatonTransition::new(s3, s3, 'x'));
 
     let mut configurations = fa.initial_configurations("xabc");
 
@@ -269,14 +277,29 @@ async fn main() {
             );
 
             for (other_state, symbols) in symbols_by_other_state {
-                if *state == other_state {
-                    draw_self_transition_with_text(&position, symbols, &font);
+                let (rects, angle) = if *state == other_state {
+                    draw_self_transition_with_text(&position, symbols, &font)
                 } else if fa.automaton.states_have_loop(*state, other_state) {
                     let other_position = states.get_position(other_state);
                     draw_curved_transition_with_text(&position, other_position, symbols, gl, &font)
                 } else {
                     let other_position = states.get_position(other_state);
                     draw_transition_with_text(&position, other_position, true, symbols, gl, &font)
+                };
+                for rect in rects {
+                    gl.push_model_matrix(glam::Mat4::from_translation(glam::vec3(
+                        rect.x, rect.y, 0.,
+                    )));
+                    gl.push_model_matrix(glam::Mat4::from_rotation_z(angle));
+                    draw_rectangle(0., 0., rect.w, rect.h, RED);
+                    gl.pop_model_matrix();
+                    gl.pop_model_matrix();
+                    if Rect::new(0., 0., rect.w, rect.h).contains(
+                        Mat3::from_rotation_z(-angle)
+                            .transform_vector2(mouse_position - rect.point()),
+                    ) {
+                        info!("Hi!");
+                    }
                 }
             }
 

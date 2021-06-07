@@ -52,11 +52,12 @@ pub fn draw_transition_with_text(
     text: Vec<String>,
     gl: &mut QuadGl,
     font: &Font,
-) {
+) -> (Vec<Rect>, f32) {
     draw_transition(from, to, to_state);
-    draw_transition_text(from, to, false, false, text, gl, font);
+    draw_transition_text(from, to, false, false, text, gl, font)
 }
 
+// Returns the containing rectangles of the texts, as well as the text angle
 pub fn draw_transition_text(
     from: &Vec2,
     to: &Vec2,
@@ -65,7 +66,7 @@ pub fn draw_transition_text(
     text: Vec<String>,
     gl: &mut QuadGl,
     font: &Font,
-) {
+) -> (Vec<Rect>, f32) {
     // Change coordinate systems to be centered on the middle of the transition,
     // and rotated parallel to the transition, then draw the text
     let angle = vec2(1., 0.).angle_between(*to - *from);
@@ -88,12 +89,16 @@ pub fn draw_transition_text(
     } else {
         8. + if direction > 0. { 4. } else { 0. }
     };
+
+    let mut rects = Vec::new();
     for (i, string) in text.iter().enumerate() {
-        let text_size = measure_text(string, None, font_size as _, 0.2);
+        let text_size = measure_text(string, Some(*font), font_size as _, 0.2);
+        let x = -text_size.width / 2.;
+        let y = direction * (initial_y_offset + 23. * i as f32);
         draw_text_ex(
             string,
-            -text_size.width / 2.,
-            direction * (initial_y_offset + 23. * i as f32),
+            x,
+            y,
             TextParams {
                 font_size: font_size as _,
                 font_scale: 0.2,
@@ -102,11 +107,25 @@ pub fn draw_transition_text(
                 ..Default::default()
             },
         );
+
+        let vec = glam::Mat4::from_rotation_z(text_angle).transform_point3(glam::vec3(
+            x,
+            y - text_size.offset_y,
+            1.,
+        ));
+        rects.push(Rect::new(
+            middle.x + vec.x,
+            middle.y + vec.y,
+            text_size.width,
+            text_size.height,
+        ));
     }
 
     // Reset the coordinate system
     gl.pop_model_matrix();
     gl.pop_model_matrix();
+
+    (rects, text_angle)
 }
 
 pub fn draw_curved_transition(from: &Vec2, to: &Vec2) {
@@ -159,10 +178,10 @@ pub fn draw_curved_transition_with_text(
     text: Vec<String>,
     gl: &mut QuadGl,
     font: &Font,
-) {
+) -> (Vec<Rect>, f32) {
     let down = (vec2(1., 0.).angle_between(*to - *from)).abs() > std::f32::consts::FRAC_PI_2;
     draw_curved_transition(from, to);
-    draw_transition_text(from, to, true, down, text, gl, font);
+    draw_transition_text(from, to, true, down, text, gl, font)
 }
 
 pub fn draw_self_transition(state_position: &Vec2) {
@@ -194,16 +213,23 @@ pub fn draw_self_transition(state_position: &Vec2) {
     );
 }
 
-pub fn draw_self_transition_with_text(state_position: &Vec2, text: Vec<String>, font: &Font) {
+pub fn draw_self_transition_with_text(
+    state_position: &Vec2,
+    text: Vec<String>,
+    font: &Font,
+) -> (Vec<Rect>, f32) {
     draw_self_transition(state_position);
 
     let font_size = TRANSITION_FONT_SIZE * 5.;
+    let mut rects = Vec::new();
     for (i, string) in text.iter().enumerate() {
-        let text_size = measure_text(string, None, font_size as _, 0.2);
+        let text_size = measure_text(string, Some(*font), font_size as _, 0.2);
+        let x = state_position.x - text_size.width / 2.;
+        let y = state_position.y - STATE_RADIUS - 32. - 20. * i as f32;
         draw_text_ex(
             string,
-            state_position.x - text_size.width / 2.,
-            state_position.y - STATE_RADIUS - 32. - 20. * i as f32,
+            x,
+            y,
             TextParams {
                 font_size: font_size as _,
                 font_scale: 0.2,
@@ -212,5 +238,13 @@ pub fn draw_self_transition_with_text(state_position: &Vec2, text: Vec<String>, 
                 ..Default::default()
             },
         );
+        rects.push(Rect::new(
+            x,
+            y - text_size.offset_y,
+            text_size.width,
+            text_size.height,
+        ));
     }
+
+    (rects, 0.)
 }
