@@ -50,9 +50,17 @@ async fn main() {
     fa.automaton
         .add_transition(FiniteAutomatonTransition::new(s1, s2, 'a'));
     fa.automaton
+        .add_transition(FiniteAutomatonTransition::new(s1, s2, 'b'));
+    fa.automaton
         .add_transition(FiniteAutomatonTransition::new(s2, s3, 'b'));
     fa.automaton
         .add_transition(FiniteAutomatonTransition::new(s3, s2, 'c'));
+    fa.automaton
+        .add_transition(FiniteAutomatonTransition::new(s3, s2, 'f'));
+    fa.automaton
+        .add_transition(FiniteAutomatonTransition::new(s3, s3, 'd'));
+    fa.automaton
+        .add_transition(FiniteAutomatonTransition::new(s3, s3, 'x'));
 
     let mut configurations = fa.initial_configurations("xabc");
 
@@ -65,6 +73,8 @@ async fn main() {
     let mut state_drag_offset = Vec2::ZERO;
     let mut selected_state: Option<u32> = None;
     let mut dragging_selected = false;
+
+    let mut selected_transition: Option<FiniteAutomatonTransition> = None;
 
     // If the user is drawing a new transition starting on a state, its ID is in here
     let mut creating_transition_from: Option<u32> = None;
@@ -134,8 +144,10 @@ async fn main() {
             if let Some(state) = states.point_in_some_state(mouse_position, &fa) {
                 selected_state = Some(state);
                 dragging_selected = false;
+                selected_transition = None;
             } else {
                 selected_state = None;
+                selected_transition = None;
             }
         }
 
@@ -166,10 +178,11 @@ async fn main() {
                     ui.memory().open_popup(popup_id);
                     open_context_menu = false;
                 }
+                let mut mouse_in_popup = false;
                 if ui.memory().is_popup_open(popup_id) {
                     let parent_clip_rect = ui.clip_rect();
 
-                    let area_response = egui::Area::new(popup_id)
+                    egui::Area::new(popup_id)
                         .order(egui::Order::Foreground)
                         .fixed_pos((context_menu_pos.x, context_menu_pos.y))
                         .show(ui.ctx(), |ui| {
@@ -204,27 +217,39 @@ async fn main() {
                                             ui.separator();
 
                                             if ui.button("Delete").clicked() {
-                                                if let Some(selected) = selected_state {
-                                                    states.remove_state(&mut fa, selected);
-                                                    configurations
-                                                        .retain(|conf| conf.state() != selected);
-                                                }
+                                                states.remove_state(&mut fa, selected);
+                                                // TODO: This won't be necessary once editing and simulation modes are separated
+                                                configurations
+                                                    .retain(|conf| conf.state() != selected);
                                                 selected_state = None;
+                                                ui.memory().close_popup();
+                                            }
+                                        } else if let Some(selected) = selected_transition {
+                                            if ui.button("Delete").clicked() {
+                                                fa.automaton.remove_transition(selected);
+                                                selected_transition = None;
                                                 ui.memory().close_popup();
                                             }
                                         }
 
-                                        mouse_over_egui |= ui.ui_contains_pointer();
+                                        mouse_in_popup = ui.ui_contains_pointer();
+                                        mouse_over_egui |= mouse_in_popup;
                                     },
                                 );
                             });
                         });
 
-                    if ui.input().key_pressed(egui::Key::Escape)
-                        || area_response.clicked_elsewhere()
-                    {
+                    if ui.input().key_pressed(egui::Key::Escape) {
                         ui.memory().close_popup();
-                        selected_state = None;
+                    } else if is_mouse_button_pressed(MouseButton::Left) && !mouse_in_popup {
+                        ui.memory().close_popup();
+
+                        // Clear selected state if the cancelling click is not in the selected state
+                        if let Some(selected) = selected_state {
+                            if !states.point_in_state(mouse_position, selected) {
+                                selected_state = None;
+                            }
+                        }
                     }
 
                     mouse_over_egui |= ui.ui_contains_pointer();
@@ -260,14 +285,31 @@ async fn main() {
             );
 
             for (other_state, symbols) in symbols_by_other_state {
-                if *state == other_state {
-                    draw_self_transition_with_text(&position, symbols, &font);
+                let (rects, angle) = if *state == other_state {
+                    draw_self_transition_with_text(&position, &symbols, &font)
                 } else if fa.automaton.states_have_loop(*state, other_state) {
                     let other_position = states.get_position(other_state);
-                    draw_curved_transition_with_text(&position, other_position, symbols, gl, &font)
+                    draw_curved_transition_with_text(&position, other_position, &symbols, gl, &font)
                 } else {
                     let other_position = states.get_position(other_state);
-                    draw_transition_with_text(&position, other_position, true, symbols, gl, &font)
+                    draw_transition_with_text(&position, other_position, true, &symbols, gl, &font)
+                };
+                for (i, rect) in rects.iter().enumerate() {
+                    // TODO: Add some padding to the rect for easier clicking
+                    if is_mouse_button_pressed(MouseButton::Right)
+                        && Rect::new(0., 0., rect.w, rect.h).contains(
+                            Mat3::from_rotation_z(-angle)
+                                .transform_vector2(mouse_position - rect.point()),
+                        )
+                        && states.point_in_some_state(mouse_position, &fa).is_none()
+                    {
+                        selected_transition = Some(FiniteAutomatonTransition::new(
+                            *state,
+                            other_state,
+                            symbols[i].chars().next().unwrap_or(EMPTY_STRING).clone(),
+                        ));
+                        selected_state = None;
+                    }
                 }
             }
 

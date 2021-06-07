@@ -24,6 +24,20 @@ impl<T: Transition> TransitionSet<T> {
         self.transitions_to.entry(to).or_default().insert(key);
     }
 
+    pub fn remove_transition(&mut self, transition: T) {
+        if let Some((key, _)) = self.transitions.iter().find(|&(_, t)| transition == *t) {
+            self.transitions.remove(key);
+
+            for from in self.transitions_from.values_mut() {
+                from.remove(&key);
+            }
+
+            for to in self.transitions_to.values_mut() {
+                to.remove(&key);
+            }
+        }
+    }
+
     pub fn register_state(&mut self, state: u32) {
         self.transitions_from.entry(state).or_default();
         self.transitions_to.entry(state).or_default();

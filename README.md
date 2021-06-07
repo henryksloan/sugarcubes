@@ -9,6 +9,8 @@ Sugarcubes is a library and application for automata and formal languages. It is
 Double-click the background to add a state.  
 Double-click a state and drag onto another state (or the same state) to add a transition.   
 Click and drag a state to move it.
+Right click a state for more options, such as deleting it or making it initial or final.
+Right click a transition symbol for more options, like deleting it.
 
 ## Building
 To build the desktop frontend, run:
@@ -32,7 +34,7 @@ Sugarcubes is in a very early stage of development, having only basic support fo
 
 ## Next steps
 * Usable FA edit mode
-    * Editing and deleting transitions with the context menu
+    * Editing transitions with the context menu
     * State naming, labels (should these JFLAP features be merged?)
     * Undo/redo system
         * Command pattern

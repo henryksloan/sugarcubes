@@ -1,7 +1,7 @@
 use crate::automata::Transition;
 
 /// A transition between two states in a finite automaton
-#[derive(Default, PartialEq)]
+#[derive(Default, PartialEq, Clone, Copy)]
 pub struct FiniteAutomatonTransition {
     from: u32,
     to: u32,
