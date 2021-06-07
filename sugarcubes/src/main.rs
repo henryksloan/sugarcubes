@@ -74,6 +74,8 @@ async fn main() {
     let mut selected_state: Option<u32> = None;
     let mut dragging_selected = false;
 
+    let mut selected_transition: Option<FiniteAutomatonTransition> = None;
+
     // If the user is drawing a new transition starting on a state, its ID is in here
     let mut creating_transition_from: Option<u32> = None;
 
@@ -142,8 +144,10 @@ async fn main() {
             if let Some(state) = states.point_in_some_state(mouse_position, &fa) {
                 selected_state = Some(state);
                 dragging_selected = false;
+                selected_transition = None;
             } else {
                 selected_state = None;
+                selected_transition = None;
             }
         }
 
@@ -213,13 +217,17 @@ async fn main() {
                                             ui.separator();
 
                                             if ui.button("Delete").clicked() {
-                                                if let Some(selected) = selected_state {
-                                                    states.remove_state(&mut fa, selected);
-                                                    // TODO: This won't be necessary once editing and simulation modes are separated
-                                                    configurations
-                                                        .retain(|conf| conf.state() != selected);
-                                                }
+                                                states.remove_state(&mut fa, selected);
+                                                // TODO: This won't be necessary once editing and simulation modes are separated
+                                                configurations
+                                                    .retain(|conf| conf.state() != selected);
                                                 selected_state = None;
+                                                ui.memory().close_popup();
+                                            }
+                                        } else if let Some(selected) = selected_transition {
+                                            if ui.button("Delete").clicked() {
+                                                fa.automaton.remove_transition(selected);
+                                                selected_transition = None;
                                                 ui.memory().close_popup();
                                             }
                                         }
@@ -278,27 +286,29 @@ async fn main() {
 
             for (other_state, symbols) in symbols_by_other_state {
                 let (rects, angle) = if *state == other_state {
-                    draw_self_transition_with_text(&position, symbols, &font)
+                    draw_self_transition_with_text(&position, &symbols, &font)
                 } else if fa.automaton.states_have_loop(*state, other_state) {
                     let other_position = states.get_position(other_state);
-                    draw_curved_transition_with_text(&position, other_position, symbols, gl, &font)
+                    draw_curved_transition_with_text(&position, other_position, &symbols, gl, &font)
                 } else {
                     let other_position = states.get_position(other_state);
-                    draw_transition_with_text(&position, other_position, true, symbols, gl, &font)
+                    draw_transition_with_text(&position, other_position, true, &symbols, gl, &font)
                 };
-                for rect in rects {
-                    gl.push_model_matrix(glam::Mat4::from_translation(glam::vec3(
-                        rect.x, rect.y, 0.,
-                    )));
-                    gl.push_model_matrix(glam::Mat4::from_rotation_z(angle));
-                    draw_rectangle(0., 0., rect.w, rect.h, RED);
-                    gl.pop_model_matrix();
-                    gl.pop_model_matrix();
-                    if Rect::new(0., 0., rect.w, rect.h).contains(
-                        Mat3::from_rotation_z(-angle)
-                            .transform_vector2(mouse_position - rect.point()),
-                    ) {
-                        info!("Hi!");
+                for (i, rect) in rects.iter().enumerate() {
+                    // TODO: Add some padding to the rect for easier clicking
+                    if is_mouse_button_pressed(MouseButton::Right)
+                        && Rect::new(0., 0., rect.w, rect.h).contains(
+                            Mat3::from_rotation_z(-angle)
+                                .transform_vector2(mouse_position - rect.point()),
+                        )
+                        && states.point_in_some_state(mouse_position, &fa).is_none()
+                    {
+                        selected_transition = Some(FiniteAutomatonTransition::new(
+                            *state,
+                            other_state,
+                            symbols[i].chars().next().unwrap_or(EMPTY_STRING).clone(),
+                        ));
+                        selected_state = None;
                     }
                 }
             }

@@ -57,7 +57,15 @@ impl<T: Transition> Automaton<T> {
         if self.states.contains_key(&transition.from())
             && self.states.contains_key(&transition.to())
         {
-            self.transitions.add_transition(transition)
+            self.transitions.add_transition(transition);
+        }
+    }
+
+    pub fn remove_transition(&mut self, transition: T) {
+        if self.states.contains_key(&transition.from())
+            && self.states.contains_key(&transition.to())
+        {
+            self.transitions.remove_transition(transition);
         }
     }
 

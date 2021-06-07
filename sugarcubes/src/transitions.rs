@@ -49,7 +49,7 @@ pub fn draw_transition_with_text(
     from: &Vec2,
     to: &Vec2,
     to_state: bool,
-    text: Vec<String>,
+    text: &Vec<String>,
     gl: &mut QuadGl,
     font: &Font,
 ) -> (Vec<Rect>, f32) {
@@ -63,7 +63,7 @@ pub fn draw_transition_text(
     to: &Vec2,
     curved: bool,
     down: bool,
-    text: Vec<String>,
+    text: &Vec<String>,
     gl: &mut QuadGl,
     font: &Font,
 ) -> (Vec<Rect>, f32) {
@@ -175,7 +175,7 @@ pub fn draw_curved_transition(from: &Vec2, to: &Vec2) {
 pub fn draw_curved_transition_with_text(
     from: &Vec2,
     to: &Vec2,
-    text: Vec<String>,
+    text: &Vec<String>,
     gl: &mut QuadGl,
     font: &Font,
 ) -> (Vec<Rect>, f32) {
@@ -215,7 +215,7 @@ pub fn draw_self_transition(state_position: &Vec2) {
 
 pub fn draw_self_transition_with_text(
     state_position: &Vec2,
-    text: Vec<String>,
+    text: &Vec<String>,
     font: &Font,
 ) -> (Vec<Rect>, f32) {
     draw_self_transition(state_position);
