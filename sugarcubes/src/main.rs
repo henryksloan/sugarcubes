@@ -1,11 +1,12 @@
 mod states;
+mod top_panel;
 mod transitions;
 
-use crate::{states::*, transitions::*};
+use crate::{states::*, top_panel::*, transitions::*};
 
 use sugarcubes_core::automata::{
     finite_automaton::{FiniteAutomaton, FiniteAutomatonTransition},
-    Configuration, SimulateAutomaton, Transition, EMPTY_STRING,
+    SimulateAutomaton, Transition, EMPTY_STRING,
 };
 
 use macroquad::prelude::*;
@@ -16,6 +17,8 @@ const DOUBLE_CLICK_DELAY: f64 = 0.25;
 
 #[macroquad::main("Sugarcubes")]
 async fn main() {
+    let mut top_panel = TopPanel::new();
+
     let transition_input_size = vec2(150., 36.);
 
     let editbox_skin = {
@@ -83,16 +86,13 @@ async fn main() {
     let mut editing_transition: Option<(Vec2, String, u32, u32)> = None;
 
     let mut last_click_time = 0.;
-    let mut mouse_over_egui = false;
-    let mut open_context_menu = false;
-    let mut context_menu_pos = Vec2::ZERO;
 
     loop {
         clear_background(WHITE);
 
         // Process keys, mouse etc.
         let mouse_position: Vec2 = mouse_position().into();
-        if !mouse_over_egui && is_mouse_button_pressed(MouseButton::Left) {
+        if !top_panel.contains_mouse && is_mouse_button_pressed(MouseButton::Left) {
             let new_click_time = get_time();
 
             // Check for double click
@@ -138,9 +138,9 @@ async fn main() {
             creating_transition_from = None;
         }
 
-        if !mouse_over_egui && is_mouse_button_pressed(MouseButton::Right) {
-            open_context_menu = true;
-            context_menu_pos = mouse_position;
+        if !top_panel.contains_mouse && is_mouse_button_pressed(MouseButton::Right) {
+            top_panel.open_context_menu = true;
+            top_panel.context_menu_pos = mouse_position;
             if let Some(state) = states.point_in_some_state(mouse_position, &fa) {
                 selected_state = Some(state);
                 dragging_selected = false;
@@ -151,113 +151,16 @@ async fn main() {
             }
         }
 
-        let mut should_step = false;
-        egui_macroquad::ui(|egui_ctx| {
-            egui::TopPanel::top("Sugarcubes").show(egui_ctx, |ui| {
-                egui::menu::bar(ui, |ui| {
-                    egui::menu::menu(ui, "File", |ui| {
-                        if ui.button("Open").clicked() {
-                            // ...
-                        }
-                    });
-                });
+        top_panel.ui(
+            &mut fa,
+            &mut states,
+            &mut configurations,
+            &mouse_position,
+            &mut selected_state,
+            &mut selected_transition,
+        );
 
-                ui.separator();
-
-                ui.label("Simulation Toolbar");
-                if ui.button("Step").clicked() {
-                    should_step = true;
-                }
-
-                mouse_over_egui = ui.ui_contains_pointer();
-            });
-
-            egui::Area::new("my_area").show(egui_ctx, |ui| {
-                let popup_id = ui.make_persistent_id("context_menu_id");
-                if open_context_menu {
-                    ui.memory().open_popup(popup_id);
-                    open_context_menu = false;
-                }
-                let mut mouse_in_popup = false;
-                if ui.memory().is_popup_open(popup_id) {
-                    let parent_clip_rect = ui.clip_rect();
-
-                    egui::Area::new(popup_id)
-                        .order(egui::Order::Foreground)
-                        .fixed_pos((context_menu_pos.x, context_menu_pos.y))
-                        .show(ui.ctx(), |ui| {
-                            ui.set_clip_rect(parent_clip_rect);
-                            let frame = egui::Frame::popup(ui.style());
-                            let frame_margin = frame.margin;
-                            frame.show(ui, |ui| {
-                                ui.with_layout(
-                                    egui::Layout::top_down_justified(egui::Align::LEFT),
-                                    |ui| {
-                                        ui.set_width(100.0 - 2.0 * frame_margin.x);
-                                        if let Some(selected) = selected_state {
-                                            let mut is_initial =
-                                                fa.automaton.initial() == Some(selected);
-                                            if ui.checkbox(&mut is_initial, "Initial").changed() {
-                                                if is_initial {
-                                                    fa.automaton.set_initial(selected);
-                                                } else {
-                                                    fa.automaton.remove_initial();
-                                                }
-                                                selected_state = None;
-                                                ui.memory().close_popup();
-                                            }
-
-                                            let mut is_final = fa.automaton.is_final(selected);
-                                            if ui.checkbox(&mut is_final, "Final").changed() {
-                                                fa.automaton.set_final(selected, is_final);
-                                                selected_state = None;
-                                                ui.memory().close_popup();
-                                            }
-
-                                            ui.separator();
-
-                                            if ui.button("Delete").clicked() {
-                                                states.remove_state(&mut fa, selected);
-                                                // TODO: This won't be necessary once editing and simulation modes are separated
-                                                configurations
-                                                    .retain(|conf| conf.state() != selected);
-                                                selected_state = None;
-                                                ui.memory().close_popup();
-                                            }
-                                        } else if let Some(selected) = selected_transition {
-                                            if ui.button("Delete").clicked() {
-                                                fa.automaton.remove_transition(selected);
-                                                selected_transition = None;
-                                                ui.memory().close_popup();
-                                            }
-                                        }
-
-                                        mouse_in_popup = ui.ui_contains_pointer();
-                                        mouse_over_egui |= mouse_in_popup;
-                                    },
-                                );
-                            });
-                        });
-
-                    if ui.input().key_pressed(egui::Key::Escape) {
-                        ui.memory().close_popup();
-                    } else if is_mouse_button_pressed(MouseButton::Left) && !mouse_in_popup {
-                        ui.memory().close_popup();
-
-                        // Clear selected state if the cancelling click is not in the selected state
-                        if let Some(selected) = selected_state {
-                            if !states.point_in_state(mouse_position, selected) {
-                                selected_state = None;
-                            }
-                        }
-                    }
-
-                    mouse_over_egui |= ui.ui_contains_pointer();
-                }
-            });
-        });
-
-        if should_step {
+        if top_panel.should_step {
             configurations = fa.step_all(configurations);
         }
 
