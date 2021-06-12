@@ -151,7 +151,7 @@ async fn main() {
             }
         }
 
-        top_panel.ui(
+        let command_opt = top_panel.ui(
             &mut fa,
             &mut states,
             &mut configurations,
@@ -159,6 +159,10 @@ async fn main() {
             &mut selected_state,
             &mut selected_transition,
         );
+
+        if let Some(command) = command_opt {
+            command.execute(&mut fa, &mut states, &mut configurations);
+        }
 
         if top_panel.should_step {
             configurations = fa.step_all(configurations);

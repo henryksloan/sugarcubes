@@ -7,6 +7,37 @@ use sugarcubes_core::automata::{
 
 use macroquad::prelude::*;
 
+pub enum Command {
+    SetInitial(u32),
+    RemoveInitial,
+    SetFinal(u32, bool),
+
+    DeleteState(u32),
+    DeleteTransition(FiniteAutomatonTransition),
+}
+
+impl Command {
+    pub fn execute(
+        &self,
+        fa: &mut FiniteAutomaton,
+        states: &mut States,
+        configurations: &mut Vec<FiniteAutomatonConfiguration>,
+    ) {
+        match *self {
+            Self::SetInitial(state) => fa.automaton.set_initial(state),
+            Self::RemoveInitial => fa.automaton.remove_initial(),
+            Self::SetFinal(state, value) => fa.automaton.set_final(state, value),
+
+            Self::DeleteState(state) => {
+                states.remove_state(fa, state);
+                // TODO: This won't be necessary once editing and simulation modes are separated
+                configurations.retain(|conf| conf.state() != state);
+            }
+            Self::DeleteTransition(transition) => fa.automaton.remove_transition(transition),
+        }
+    }
+}
+
 pub struct TopPanel {
     pub should_step: bool,
     pub contains_mouse: bool,
@@ -26,15 +57,17 @@ impl TopPanel {
 
     pub fn ui(
         &mut self,
-        mut fa: &mut FiniteAutomaton,
-        states: &mut States,
-        configurations: &mut Vec<FiniteAutomatonConfiguration>,
+        fa: &FiniteAutomaton,
+        states: &States,
+        configurations: &Vec<FiniteAutomatonConfiguration>,
         mouse_position: &Vec2,
         selected_state: &mut Option<u32>,
         selected_transition: &mut Option<FiniteAutomatonTransition>,
-    ) {
+    ) -> Option<Command> {
         self.should_step = false;
         self.contains_mouse = false;
+
+        let mut command = None;
 
         egui_macroquad::ui(|egui_ctx| {
             egui::TopPanel::top("Sugarcubes").show(egui_ctx, |ui| {
@@ -97,9 +130,9 @@ impl TopPanel {
                                                 fa.automaton.initial() == Some(selected);
                                             if ui.checkbox(&mut is_initial, "Initial").changed() {
                                                 if is_initial {
-                                                    fa.automaton.set_initial(selected);
+                                                    command = Some(Command::SetInitial(selected));
                                                 } else {
-                                                    fa.automaton.remove_initial();
+                                                    command = Some(Command::RemoveInitial);
                                                 }
                                                 *selected_state = None;
                                                 ui.memory().close_popup();
@@ -107,7 +140,8 @@ impl TopPanel {
 
                                             let mut is_final = fa.automaton.is_final(selected);
                                             if ui.checkbox(&mut is_final, "Final").changed() {
-                                                fa.automaton.set_final(selected, is_final);
+                                                command =
+                                                    Some(Command::SetFinal(selected, is_final));
                                                 *selected_state = None;
                                                 ui.memory().close_popup();
                                             }
@@ -115,18 +149,13 @@ impl TopPanel {
                                             ui.separator();
 
                                             if ui.button("Delete").clicked() {
-                                                states.remove_state(&mut fa, selected);
-                                                // TODO: This won't be necessary once editing and simulation modes are separated
-                                                // TODO: This is commented as a temporary fix, but breaks stepping
-                                                // replace with a command pattern asap
-                                                // configurations
-                                                //     .retain(|conf| conf.state() != selected);
+                                                command = Some(Command::DeleteState(selected));
                                                 *selected_state = None;
                                                 ui.memory().close_popup();
                                             }
                                         } else if let Some(selected) = *selected_transition {
                                             if ui.button("Delete").clicked() {
-                                                fa.automaton.remove_transition(selected);
+                                                command = Some(Command::DeleteTransition(selected));
                                                 *selected_transition = None;
                                                 ui.memory().close_popup();
                                             }
@@ -141,6 +170,7 @@ impl TopPanel {
 
                     if ui.input().key_pressed(egui::Key::Escape) {
                         ui.memory().close_popup();
+                        *selected_state = None;
                     } else if is_mouse_button_pressed(MouseButton::Left) && !mouse_in_popup {
                         ui.memory().close_popup();
 
@@ -156,5 +186,7 @@ impl TopPanel {
                 }
             });
         });
+
+        command
     }
 }
