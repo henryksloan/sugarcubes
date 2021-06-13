@@ -1,3 +1,4 @@
+mod command;
 mod states;
 mod top_panel;
 mod transitions;
