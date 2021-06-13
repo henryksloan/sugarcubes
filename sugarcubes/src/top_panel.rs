@@ -64,7 +64,7 @@ impl TopPanel {
 
                 if let Mode::Simulate = self.mode {
                     ui.separator();
-                    self.simulation_toolbar(ui, configurations);
+                    self.simulation_toolbar(ui, fa, configurations);
                 }
 
                 self.contains_mouse = ui.ui_contains_pointer();
@@ -106,6 +106,7 @@ impl TopPanel {
     fn simulation_toolbar(
         &mut self,
         ui: &mut egui::Ui,
+        fa: &FiniteAutomaton,
         configurations: &mut Vec<FiniteAutomatonConfiguration>,
     ) {
         ui.horizontal(|ui| {
@@ -136,9 +137,16 @@ impl TopPanel {
 
                 ui.separator();
 
-                if ui.button("Step").clicked() {
-                    self.should_step = true;
-                }
+                ui.horizontal(|ui| {
+                    if ui.button("Step").clicked() {
+                        self.should_step = true;
+                    }
+
+                    if ui.button("Reset").clicked() {
+                        self.new_configurations =
+                            Some(fa.initial_configurations(&self.string_simulating));
+                    }
+                });
             });
         });
     }
