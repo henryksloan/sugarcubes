@@ -66,7 +66,7 @@ async fn main() {
     fa.automaton
         .add_transition(FiniteAutomatonTransition::new(s3, s3, 'x'));
 
-    let mut configurations = fa.initial_configurations("xabc");
+    let mut configurations = Vec::new();
 
     let gl = unsafe { get_internal_gl().quad_gl };
 
@@ -227,7 +227,8 @@ async fn main() {
                 }
             }
 
-            states.draw_states(&fa, &configurations, selected_state, &font);
+            let is_simulating = matches!(top_panel.mode, Mode::Simulate);
+            states.draw_states(&fa, is_simulating, &configurations, selected_state, &font);
         }
 
         if let Some(from) = creating_transition_from {

@@ -59,184 +59,217 @@ impl TopPanel {
         let mut command = None;
 
         egui_macroquad::ui(|egui_ctx| {
-            egui::TopPanel::top("Sugarcubes").show(egui_ctx, |ui| {
-                egui::menu::bar(ui, |ui| {
-                    egui::menu::menu(ui, "File", |ui| {
-                        if ui.button("Open").clicked() {
-                            // ...
-                        }
-                    });
-
-                    egui::menu::menu(ui, "Simulate", |ui| {
-                        if ui.button("Simulate String").clicked() {
-                            self.open_string_input_window = true;
-                        }
-                    });
-                });
+            egui::TopPanel::top("top_panel").show(egui_ctx, |ui| {
+                self.menu_bar(ui);
 
                 if let Mode::Simulate = self.mode {
                     ui.separator();
-
-                    ui.horizontal(|ui| {
-                        if ui.button("X").clicked() {
-                            self.mode = Mode::Edit;
-                        }
-
-                        ui.vertical(|ui| {
-                            ui.add(
-                                egui::Label::new(format!(
-                                    "Simulating \"{}\"",
-                                    self.string_simulating
-                                ))
-                                .heading(),
-                            );
-
-                            ui.horizontal(|ui| {
-                                for configuration in configurations {
-                                    if ui
-                                        .add_sized(
-                                            [75., 50.],
-                                            egui::Button::new(configuration.state().to_string()),
-                                        )
-                                        .clicked()
-                                    {}
-                                }
-                            });
-
-                            if ui.button("Step").clicked() {
-                                self.should_step = true;
-                            }
-                        });
-                    });
+                    self.simulation_toolbar(ui, configurations);
                 }
 
                 self.contains_mouse = ui.ui_contains_pointer();
             });
 
-            egui::Area::new("my_area").show(egui_ctx, |ui| {
-                let popup_id = ui.make_persistent_id("context_menu_id");
-                if self.open_context_menu {
-                    ui.memory().open_popup(popup_id);
-                    self.open_context_menu = false;
-                }
-                let mut mouse_in_popup = false;
-                if ui.memory().is_popup_open(popup_id) {
-                    let parent_clip_rect = ui.clip_rect();
-
-                    egui::Area::new(popup_id)
-                        .order(egui::Order::Foreground)
-                        .fixed_pos((self.context_menu_pos.x, self.context_menu_pos.y))
-                        .show(ui.ctx(), |ui| {
-                            ui.set_clip_rect(parent_clip_rect);
-                            let frame = egui::Frame::popup(ui.style());
-                            let frame_margin = frame.margin;
-                            frame.show(ui, |ui| {
-                                ui.with_layout(
-                                    egui::Layout::top_down_justified(egui::Align::LEFT),
-                                    |ui| {
-                                        ui.set_width(100.0 - 2.0 * frame_margin.x);
-                                        if let Some(selected) = *selected_state {
-                                            let mut is_initial =
-                                                fa.automaton.initial() == Some(selected);
-                                            if ui.checkbox(&mut is_initial, "Initial").changed() {
-                                                if is_initial {
-                                                    command = Some(Command::SetInitial(selected));
-                                                } else {
-                                                    command = Some(Command::RemoveInitial);
-                                                }
-                                                *selected_state = None;
-                                                ui.memory().close_popup();
-                                            }
-
-                                            let mut is_final = fa.automaton.is_final(selected);
-                                            if ui.checkbox(&mut is_final, "Final").changed() {
-                                                command =
-                                                    Some(Command::SetFinal(selected, is_final));
-                                                *selected_state = None;
-                                                ui.memory().close_popup();
-                                            }
-
-                                            ui.separator();
-
-                                            if ui.button("Delete").clicked() {
-                                                command = Some(Command::DeleteState(selected));
-                                                *selected_state = None;
-                                                ui.memory().close_popup();
-                                            }
-                                        } else if let Some(selected) = *selected_transition {
-                                            if ui.button("Delete").clicked() {
-                                                command = Some(Command::DeleteTransition(selected));
-                                                *selected_transition = None;
-                                                ui.memory().close_popup();
-                                            }
-                                        }
-
-                                        mouse_in_popup = ui.ui_contains_pointer();
-                                        self.contains_mouse |= mouse_in_popup;
-                                    },
-                                );
-                            });
-                        });
-
-                    if ui.input().key_pressed(egui::Key::Escape) {
-                        ui.memory().close_popup();
-                        *selected_state = None;
-                    } else if is_mouse_button_pressed(MouseButton::Left) && !mouse_in_popup {
-                        ui.memory().close_popup();
-
-                        // Clear selected state if the cancelling click is not in the selected state
-                        if let Some(selected) = *selected_state {
-                            if !states.point_in_state(*mouse_position, selected) {
-                                *selected_state = None;
-                            }
-                        }
-                    }
-
-                    self.contains_mouse |= ui.ui_contains_pointer();
-                }
-            });
+            command = self.context_menu(
+                egui_ctx,
+                fa,
+                states,
+                mouse_position,
+                selected_state,
+                selected_transition,
+            );
 
             if self.open_string_input_window {
-                let mut window_open = true;
-                let response = egui::Window::new("Input string")
-                    .open(&mut window_open)
-                    .resizable(false)
-                    .collapsible(false)
-                    .title_bar(true)
-                    .show(egui_ctx, |ui| {
-                        let text_edit = ui.add(egui::TextEdit::singleline(&mut self.string_input));
-
-                        ui.horizontal(|ui| {
-                            if ui.button("Ok").clicked()
-                                || (text_edit.lost_focus()
-                                    && ui.input().key_pressed(egui::Key::Enter))
-                            {
-                                self.new_configurations =
-                                    Some(fa.initial_configurations(&self.string_input));
-                                self.mode = Mode::Simulate;
-                                self.string_simulating = self.string_input.clone();
-                                self.open_string_input_window = false;
-                            }
-
-                            if ui.button("Cancel").clicked() {
-                                self.open_string_input_window = false;
-                            }
-                        });
-                    });
-                if !window_open {
-                    self.open_string_input_window = false;
-                }
-
-                if !self.open_string_input_window {
-                    self.string_input.clear();
-                }
-
-                if let Some(response) = response {
-                    self.contains_mouse |= response.hovered();
-                }
+                self.string_input_window(egui_ctx, fa);
             }
         });
 
         command
+    }
+
+    fn menu_bar(&mut self, ui: &mut egui::Ui) {
+        egui::menu::bar(ui, |ui| {
+            egui::menu::menu(ui, "File", |ui| {
+                if ui.button("Open").clicked() {
+                    // ...
+                }
+            });
+
+            egui::menu::menu(ui, "Simulate", |ui| {
+                if ui.button("Simulate String").clicked() {
+                    self.open_string_input_window = true;
+                }
+            });
+        });
+    }
+
+    fn simulation_toolbar(
+        &mut self,
+        ui: &mut egui::Ui,
+        configurations: &mut Vec<FiniteAutomatonConfiguration>,
+    ) {
+        ui.horizontal(|ui| {
+            if ui.button("X").clicked() {
+                self.mode = Mode::Edit;
+            }
+
+            ui.vertical(|ui| {
+                ui.add(
+                    egui::Label::new(format!("Simulating \"{}\"", self.string_simulating))
+                        .heading(),
+                );
+
+                ui.horizontal(|ui| {
+                    for configuration in configurations {
+                        if ui
+                            .add_sized(
+                                [75., 50.],
+                                egui::Button::new(configuration.state().to_string()),
+                            )
+                            .clicked()
+                        {}
+                    }
+                });
+
+                if ui.button("Step").clicked() {
+                    self.should_step = true;
+                }
+            });
+        });
+    }
+
+    fn context_menu(
+        &mut self,
+        egui_ctx: &egui::CtxRef,
+        fa: &FiniteAutomaton,
+        states: &States,
+        mouse_position: &Vec2,
+        selected_state: &mut Option<u32>,
+        selected_transition: &mut Option<FiniteAutomatonTransition>,
+    ) -> Option<Command> {
+        let mut command = None;
+
+        egui::Area::new("context_menu").show(egui_ctx, |ui| {
+            let popup_id = ui.make_persistent_id("context_menu_id");
+            if self.open_context_menu {
+                ui.memory().open_popup(popup_id);
+                self.open_context_menu = false;
+            }
+            let mut mouse_in_popup = false;
+            if ui.memory().is_popup_open(popup_id) {
+                let parent_clip_rect = ui.clip_rect();
+
+                egui::Area::new(popup_id)
+                    .order(egui::Order::Foreground)
+                    .fixed_pos((self.context_menu_pos.x, self.context_menu_pos.y))
+                    .show(ui.ctx(), |ui| {
+                        ui.set_clip_rect(parent_clip_rect);
+                        let frame = egui::Frame::popup(ui.style());
+                        let frame_margin = frame.margin;
+                        frame.show(ui, |ui| {
+                            ui.with_layout(
+                                egui::Layout::top_down_justified(egui::Align::LEFT),
+                                |ui| {
+                                    ui.set_width(100.0 - 2.0 * frame_margin.x);
+                                    if let Some(selected) = *selected_state {
+                                        let mut is_initial =
+                                            fa.automaton.initial() == Some(selected);
+                                        if ui.checkbox(&mut is_initial, "Initial").changed() {
+                                            if is_initial {
+                                                command = Some(Command::SetInitial(selected));
+                                            } else {
+                                                command = Some(Command::RemoveInitial);
+                                            }
+                                            *selected_state = None;
+                                            ui.memory().close_popup();
+                                        }
+
+                                        let mut is_final = fa.automaton.is_final(selected);
+                                        if ui.checkbox(&mut is_final, "Final").changed() {
+                                            command = Some(Command::SetFinal(selected, is_final));
+                                            *selected_state = None;
+                                            ui.memory().close_popup();
+                                        }
+
+                                        ui.separator();
+
+                                        if ui.button("Delete").clicked() {
+                                            command = Some(Command::DeleteState(selected));
+                                            *selected_state = None;
+                                            ui.memory().close_popup();
+                                        }
+                                    } else if let Some(selected) = *selected_transition {
+                                        if ui.button("Delete").clicked() {
+                                            command = Some(Command::DeleteTransition(selected));
+                                            *selected_transition = None;
+                                            ui.memory().close_popup();
+                                        }
+                                    }
+
+                                    mouse_in_popup = ui.ui_contains_pointer();
+                                    self.contains_mouse |= mouse_in_popup;
+                                },
+                            );
+                        });
+                    });
+
+                if ui.input().key_pressed(egui::Key::Escape) {
+                    ui.memory().close_popup();
+                    *selected_state = None;
+                } else if is_mouse_button_pressed(MouseButton::Left) && !mouse_in_popup {
+                    ui.memory().close_popup();
+
+                    // Clear selected state if the cancelling click is not in the selected state
+                    if let Some(selected) = *selected_state {
+                        if !states.point_in_state(*mouse_position, selected) {
+                            *selected_state = None;
+                        }
+                    }
+                }
+
+                self.contains_mouse |= ui.ui_contains_pointer();
+            }
+        });
+
+        command
+    }
+
+    fn string_input_window(&mut self, egui_ctx: &egui::CtxRef, fa: &FiniteAutomaton) {
+        let mut window_open = true;
+        let response = egui::Window::new("Input string")
+            .open(&mut window_open)
+            .resizable(false)
+            .collapsible(false)
+            .title_bar(true)
+            .show(egui_ctx, |ui| {
+                let text_edit = ui.add(egui::TextEdit::singleline(&mut self.string_input));
+
+                ui.horizontal(|ui| {
+                    if ui.button("Ok").clicked()
+                        || (text_edit.lost_focus() && ui.input().key_pressed(egui::Key::Enter))
+                    {
+                        self.new_configurations =
+                            Some(fa.initial_configurations(&self.string_input));
+                        self.mode = Mode::Simulate;
+                        self.string_simulating = self.string_input.clone();
+                        self.open_string_input_window = false;
+                    }
+
+                    if ui.button("Cancel").clicked() {
+                        self.open_string_input_window = false;
+                    }
+                });
+            });
+        if !window_open {
+            self.open_string_input_window = false;
+        }
+
+        if !self.open_string_input_window {
+            self.string_input.clear();
+        }
+
+        if let Some(response) = response {
+            self.contains_mouse |= response.hovered();
+        }
     }
 }
