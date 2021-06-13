@@ -37,10 +37,10 @@ async fn main() {
 
     let mut fa = FiniteAutomaton::default();
     let mut states = States::new();
-    let s0 = states.add_state(&mut fa, vec2(200., 300.));
-    let s1 = states.add_state(&mut fa, vec2(400., 200.));
-    let s2 = states.add_state(&mut fa, vec2(400., 400.));
-    let s3 = states.add_state(&mut fa, vec2(600., 400.));
+    let s0 = states.add_state(&mut fa, vec2(200., 360.));
+    let s1 = states.add_state(&mut fa, vec2(400., 260.));
+    let s2 = states.add_state(&mut fa, vec2(400., 460.));
+    let s3 = states.add_state(&mut fa, vec2(600., 460.));
 
     fa.automaton.set_initial(s0);
     fa.automaton.set_final(s2, true);

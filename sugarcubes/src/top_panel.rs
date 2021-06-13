@@ -119,7 +119,10 @@ impl TopPanel {
                         .heading(),
                 );
 
+                ui.separator();
+
                 ui.horizontal(|ui| {
+                    ui.set_min_height(50.);
                     for configuration in configurations {
                         if ui
                             .add_sized(
@@ -130,6 +133,8 @@ impl TopPanel {
                         {}
                     }
                 });
+
+                ui.separator();
 
                 if ui.button("Step").clicked() {
                     self.should_step = true;
