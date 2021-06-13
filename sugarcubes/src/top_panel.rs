@@ -7,8 +7,13 @@ use sugarcubes_core::automata::{
 
 use macroquad::prelude::*;
 
+pub enum Mode {
+    Edit,
+    Simulate,
+}
+
 pub struct TopPanel {
-    pub should_step: bool,
+    pub mode: Mode,
     pub contains_mouse: bool,
     pub open_context_menu: bool,
     pub context_menu_pos: Vec2,
@@ -16,12 +21,15 @@ pub struct TopPanel {
     open_string_input_window: bool,
     string_input: String,
     pub new_configurations: Option<Vec<FiniteAutomatonConfiguration>>,
+
+    pub should_step: bool,
+    string_simulating: String,
 }
 
 impl TopPanel {
     pub fn new() -> Self {
         Self {
-            should_step: false,
+            mode: Mode::Edit,
             contains_mouse: false,
             open_context_menu: false,
             context_menu_pos: Vec2::ZERO,
@@ -29,6 +37,9 @@ impl TopPanel {
             open_string_input_window: false,
             string_input: String::new(),
             new_configurations: None,
+
+            should_step: false,
+            string_simulating: String::new(),
         }
     }
 
@@ -63,26 +74,41 @@ impl TopPanel {
                     });
                 });
 
-                ui.separator();
+                if let Mode::Simulate = self.mode {
+                    ui.separator();
 
-                // TODO: First of all, refactor all egui stuff into a new file/module folder
-                // Then, the toolbar shown should be based on a Match of some global state (possibly in egui `memory`?)
-                ui.label("Simulation Toolbar");
-                ui.horizontal(|ui| {
-                    if ui.button("Step").clicked() {
-                        self.should_step = true;
-                    }
+                    ui.horizontal(|ui| {
+                        if ui.button("X").clicked() {
+                            self.mode = Mode::Edit;
+                        }
 
-                    for configuration in configurations {
-                        if ui
-                            .add_sized(
-                                [75., 50.],
-                                egui::Button::new(configuration.state().to_string()),
-                            )
-                            .clicked()
-                        {}
-                    }
-                });
+                        ui.vertical(|ui| {
+                            ui.add(
+                                egui::Label::new(format!(
+                                    "Simulating \"{}\"",
+                                    self.string_simulating
+                                ))
+                                .heading(),
+                            );
+
+                            ui.horizontal(|ui| {
+                                for configuration in configurations {
+                                    if ui
+                                        .add_sized(
+                                            [75., 50.],
+                                            egui::Button::new(configuration.state().to_string()),
+                                        )
+                                        .clicked()
+                                    {}
+                                }
+                            });
+
+                            if ui.button("Step").clicked() {
+                                self.should_step = true;
+                            }
+                        });
+                    });
+                }
 
                 self.contains_mouse = ui.ui_contains_pointer();
             });
@@ -178,12 +204,17 @@ impl TopPanel {
                     .collapsible(false)
                     .title_bar(true)
                     .show(egui_ctx, |ui| {
-                        ui.add(egui::TextEdit::singleline(&mut self.string_input));
+                        let text_edit = ui.add(egui::TextEdit::singleline(&mut self.string_input));
 
                         ui.horizontal(|ui| {
-                            if ui.button("Ok").clicked() {
+                            if ui.button("Ok").clicked()
+                                || (text_edit.lost_focus()
+                                    && ui.input().key_pressed(egui::Key::Enter))
+                            {
                                 self.new_configurations =
                                     Some(fa.initial_configurations(&self.string_input));
+                                self.mode = Mode::Simulate;
+                                self.string_simulating = self.string_input.clone();
                                 self.open_string_input_window = false;
                             }
 

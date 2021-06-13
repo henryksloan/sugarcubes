@@ -93,68 +93,70 @@ async fn main() {
 
         // Process keys, mouse etc.
         let mouse_position: Vec2 = mouse_position().into();
-        if !top_panel.contains_mouse && is_mouse_button_pressed(MouseButton::Left) {
-            let new_click_time = get_time();
+        if let Mode::Edit = top_panel.mode {
+            if !top_panel.contains_mouse && is_mouse_button_pressed(MouseButton::Left) {
+                let new_click_time = get_time();
 
-            // Check for double click
-            if last_click_time > 0. && new_click_time - last_click_time <= DOUBLE_CLICK_DELAY {
-                creating_transition_from = None;
+                // Check for double click
+                if last_click_time > 0. && new_click_time - last_click_time <= DOUBLE_CLICK_DELAY {
+                    creating_transition_from = None;
 
-                if let Some(state) = states.point_in_some_state(mouse_position, &fa) {
-                    creating_transition_from = Some(state);
+                    if let Some(state) = states.point_in_some_state(mouse_position, &fa) {
+                        creating_transition_from = Some(state);
+                    } else {
+                        selected_state = Some(states.add_state(&mut fa, mouse_position));
+                        state_drag_offset = Vec2::ZERO;
+                        dragging_selected = true;
+                    }
                 } else {
-                    selected_state = Some(states.add_state(&mut fa, mouse_position));
-                    state_drag_offset = Vec2::ZERO;
-                    dragging_selected = true;
+                    if let Some(state) = states.point_in_some_state(mouse_position, &fa) {
+                        selected_state = Some(state);
+                        state_drag_offset = *states.get_position(state) - mouse_position;
+                        dragging_selected = true;
+                    }
                 }
-            } else {
+
+                last_click_time = new_click_time;
+            }
+
+            if is_mouse_button_released(MouseButton::Left) {
+                if dragging_selected {
+                    selected_state = None;
+                }
+
+                // If the user releases over a state while creating a transition,
+                // connect the two states
+                if let Some(from) = creating_transition_from {
+                    if let Some(to) = states.point_in_some_state(mouse_position, &fa) {
+                        let middle = {
+                            let position_from = *states.get_position(from);
+                            let position_to = *states.get_position(to);
+                            position_from.lerp(position_to, 0.5)
+                        } - transition_input_size / 2.;
+                        editing_transition = Some((middle, "".to_string(), from, to));
+                    }
+                }
+
+                creating_transition_from = None;
+            }
+
+            if !top_panel.contains_mouse && is_mouse_button_pressed(MouseButton::Right) {
+                top_panel.open_context_menu = true;
+                top_panel.context_menu_pos = mouse_position;
                 if let Some(state) = states.point_in_some_state(mouse_position, &fa) {
                     selected_state = Some(state);
-                    state_drag_offset = *states.get_position(state) - mouse_position;
-                    dragging_selected = true;
+                    dragging_selected = false;
+                    selected_transition = None;
+                } else {
+                    selected_state = None;
+                    selected_transition = None;
                 }
-            }
-
-            last_click_time = new_click_time;
-        }
-
-        if is_mouse_button_released(MouseButton::Left) {
-            if dragging_selected {
-                selected_state = None;
-            }
-
-            // If the user releases over a state while creating a transition,
-            // connect the two states
-            if let Some(from) = creating_transition_from {
-                if let Some(to) = states.point_in_some_state(mouse_position, &fa) {
-                    let middle = {
-                        let position_from = *states.get_position(from);
-                        let position_to = *states.get_position(to);
-                        position_from.lerp(position_to, 0.5)
-                    } - transition_input_size / 2.;
-                    editing_transition = Some((middle, "".to_string(), from, to));
-                }
-            }
-
-            creating_transition_from = None;
-        }
-
-        if !top_panel.contains_mouse && is_mouse_button_pressed(MouseButton::Right) {
-            top_panel.open_context_menu = true;
-            top_panel.context_menu_pos = mouse_position;
-            if let Some(state) = states.point_in_some_state(mouse_position, &fa) {
-                selected_state = Some(state);
-                dragging_selected = false;
-                selected_transition = None;
-            } else {
-                selected_state = None;
-                selected_transition = None;
             }
         }
 
         let command_opt = top_panel.ui(
-            &mut fa,
-            &mut states,
+            &fa,
+            &states,
             &mut configurations,
             &mouse_position,
             &mut selected_state,
