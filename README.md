@@ -42,8 +42,7 @@ Sugarcubes is in a very early stage of development, having only basic support fo
     * Multiple select mode
         * Click-drag starting on the background
         * Movement and deletion of multiple objects
-* Full simulation mode
-    * List all current configurations
+* Improved simulation mode
     * Implement accept/reject detection and display
     * Reset AND rewind buttons
 * Saving
