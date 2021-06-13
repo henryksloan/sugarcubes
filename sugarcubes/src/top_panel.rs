@@ -2,7 +2,7 @@ use crate::states::*;
 
 use sugarcubes_core::automata::{
     finite_automaton::{FiniteAutomaton, FiniteAutomatonConfiguration, FiniteAutomatonTransition},
-    Configuration,
+    Configuration, SimulateAutomaton,
 };
 
 use macroquad::prelude::*;
@@ -43,6 +43,10 @@ pub struct TopPanel {
     pub contains_mouse: bool,
     pub open_context_menu: bool,
     pub context_menu_pos: Vec2,
+
+    open_string_input_window: bool,
+    string_input: String,
+    pub new_configurations: Option<Vec<FiniteAutomatonConfiguration>>,
 }
 
 impl TopPanel {
@@ -52,6 +56,10 @@ impl TopPanel {
             contains_mouse: false,
             open_context_menu: false,
             context_menu_pos: Vec2::ZERO,
+
+            open_string_input_window: false,
+            string_input: String::new(),
+            new_configurations: None,
         }
     }
 
@@ -59,13 +67,14 @@ impl TopPanel {
         &mut self,
         fa: &FiniteAutomaton,
         states: &States,
-        configurations: &Vec<FiniteAutomatonConfiguration>,
+        configurations: &mut Vec<FiniteAutomatonConfiguration>,
         mouse_position: &Vec2,
         selected_state: &mut Option<u32>,
         selected_transition: &mut Option<FiniteAutomatonTransition>,
     ) -> Option<Command> {
         self.should_step = false;
         self.contains_mouse = false;
+        self.new_configurations = None;
 
         let mut command = None;
 
@@ -75,6 +84,12 @@ impl TopPanel {
                     egui::menu::menu(ui, "File", |ui| {
                         if ui.button("Open").clicked() {
                             // ...
+                        }
+                    });
+
+                    egui::menu::menu(ui, "Simulate", |ui| {
+                        if ui.button("Simulate String").clicked() {
+                            self.open_string_input_window = true;
                         }
                     });
                 });
@@ -185,6 +200,41 @@ impl TopPanel {
                     self.contains_mouse |= ui.ui_contains_pointer();
                 }
             });
+
+            if self.open_string_input_window {
+                let mut window_open = true;
+                let response = egui::Window::new("Input string")
+                    .open(&mut window_open)
+                    .resizable(false)
+                    .collapsible(false)
+                    .title_bar(true)
+                    .show(egui_ctx, |ui| {
+                        ui.add(egui::TextEdit::singleline(&mut self.string_input));
+
+                        ui.horizontal(|ui| {
+                            if ui.button("Ok").clicked() {
+                                self.new_configurations =
+                                    Some(fa.initial_configurations(&self.string_input));
+                                self.open_string_input_window = false;
+                            }
+
+                            if ui.button("Cancel").clicked() {
+                                self.open_string_input_window = false;
+                            }
+                        });
+                    });
+                if !window_open {
+                    self.open_string_input_window = false;
+                }
+
+                if !self.open_string_input_window {
+                    self.string_input.clear();
+                }
+
+                if let Some(response) = response {
+                    self.contains_mouse |= response.hovered();
+                }
+            }
         });
 
         command

@@ -164,6 +164,10 @@ async fn main() {
             command.execute(&mut fa, &mut states, &mut configurations);
         }
 
+        if let Some(new_configurations) = &top_panel.new_configurations {
+            configurations = new_configurations.to_vec();
+        }
+
         if top_panel.should_step {
             configurations = fa.step_all(configurations);
         }
