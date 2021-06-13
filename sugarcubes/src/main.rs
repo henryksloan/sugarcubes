@@ -164,7 +164,7 @@ async fn main() {
         );
 
         if let Some(command) = command_opt {
-            command.execute(&mut fa, &mut states, &mut configurations);
+            command.execute(&mut fa, &mut states);
         }
 
         if let Some(new_configurations) = &top_panel.new_configurations {
