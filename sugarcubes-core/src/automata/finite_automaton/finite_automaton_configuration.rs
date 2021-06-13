@@ -1,6 +1,7 @@
 use crate::automata::Configuration;
 
 /// A configuration in a finite automaton, including the remaining input
+#[derive(Clone)]
 pub struct FiniteAutomatonConfiguration {
     state: u32,
     pub remaining_string: String,

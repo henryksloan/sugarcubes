@@ -1,5 +1,5 @@
 /// The full details of a configuration being simulated
-pub trait Configuration {
+pub trait Configuration: Clone {
     fn state(&self) -> u32;
 }
 

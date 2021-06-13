@@ -129,15 +129,17 @@ impl States {
     pub fn draw_states(
         &mut self,
         fa: &FiniteAutomaton,
+        is_simulating: bool,
         configurations: &Vec<FiniteAutomatonConfiguration>,
         selected_state: Option<u32>,
         font: &Font,
     ) {
         // Draw states in order of increasing ID, so higher ID states are drawn on top
         for &state in fa.automaton.states_iter() {
-            let is_active = configurations
-                .iter()
-                .any(|configuration| configuration.state() == state);
+            let is_active = is_simulating
+                && configurations
+                    .iter()
+                    .any(|configuration| configuration.state() == state);
             self.draw_state(
                 state,
                 is_active,
