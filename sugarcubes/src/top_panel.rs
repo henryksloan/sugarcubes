@@ -7,6 +7,8 @@ use sugarcubes_core::automata::{
 
 use macroquad::prelude::*;
 
+const CONFIGURATION_HEIGHT: f32 = 60.;
+
 pub enum Mode {
     Edit,
     Simulate,
@@ -123,12 +125,38 @@ impl TopPanel {
                 ui.separator();
 
                 ui.horizontal(|ui| {
-                    ui.set_min_height(50.);
+                    ui.set_min_height(CONFIGURATION_HEIGHT);
                     for configuration in configurations {
+                        let (fill, text_color, message) =
+                            if configuration.remaining_string.is_empty() {
+                                if fa.automaton.is_final(configuration.state()) {
+                                    (
+                                        Some(egui::Color32::from_rgb(122, 240, 98)),
+                                        egui::Color32::BLACK,
+                                        "accept",
+                                    )
+                                } else {
+                                    (Some(egui::Color32::RED), egui::Color32::WHITE, "reject")
+                                }
+                            } else {
+                                (
+                                    None,
+                                    egui::Color32::WHITE,
+                                    configuration.remaining_string.as_str(),
+                                )
+                            };
+
                         if ui
                             .add_sized(
-                                [75., 50.],
-                                egui::Button::new(configuration.state().to_string()),
+                                [75., CONFIGURATION_HEIGHT],
+                                egui::Button::new(format!(
+                                    "{}\n{}",
+                                    configuration.state().to_string(),
+                                    message,
+                                ))
+                                .fill(fill)
+                                .text_color(text_color)
+                                .text_style(egui::TextStyle::Heading),
                             )
                             .clicked()
                         {}
