@@ -37,10 +37,10 @@ async fn main() {
 
     let mut fa = FiniteAutomaton::default();
     let mut states = States::new();
-    let s0 = states.add_state(&mut fa, vec2(200., 360.));
-    let s1 = states.add_state(&mut fa, vec2(400., 260.));
-    let s2 = states.add_state(&mut fa, vec2(400., 460.));
-    let s3 = states.add_state(&mut fa, vec2(600., 460.));
+    let s0 = states.add_state(&mut fa, vec2(200., 270.));
+    let s1 = states.add_state(&mut fa, vec2(400., 170.));
+    let s2 = states.add_state(&mut fa, vec2(400., 370.));
+    let s3 = states.add_state(&mut fa, vec2(600., 370.));
 
     fa.automaton.set_initial(s0);
     fa.automaton.set_final(s2, true);
@@ -92,7 +92,7 @@ async fn main() {
         clear_background(WHITE);
 
         // Process keys, mouse etc.
-        let mouse_position: Vec2 = mouse_position().into();
+        let mouse_position: Vec2 = Vec2::from(mouse_position()) - vec2(0., top_panel.height);
         if let Mode::Edit = top_panel.mode {
             if !top_panel.contains_mouse && is_mouse_button_pressed(MouseButton::Left) {
                 let new_click_time = get_time();
@@ -142,7 +142,7 @@ async fn main() {
 
             if !top_panel.contains_mouse && is_mouse_button_pressed(MouseButton::Right) {
                 top_panel.open_context_menu = true;
-                top_panel.context_menu_pos = mouse_position;
+                top_panel.context_menu_pos = mouse_position + vec2(0., top_panel.height);
                 if let Some(state) = states.point_in_some_state(mouse_position, &fa) {
                     selected_state = Some(state);
                     dragging_selected = false;
@@ -174,6 +174,13 @@ async fn main() {
         if top_panel.should_step {
             configurations = fa.step_all(configurations);
         }
+
+        set_camera(&Camera2D::from_display_rect(Rect::new(
+            0.,
+            -top_panel.height,
+            screen_width(),
+            screen_height(),
+        )));
 
         // Draw things before egui
         if let Some(selected) = selected_state {

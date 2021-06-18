@@ -15,6 +15,7 @@ pub enum Mode {
 }
 
 pub struct TopPanel {
+    pub height: f32,
     pub mode: Mode,
     pub contains_mouse: bool,
     pub open_context_menu: bool,
@@ -31,6 +32,7 @@ pub struct TopPanel {
 impl TopPanel {
     pub fn new() -> Self {
         Self {
+            height: 0.,
             mode: Mode::Edit,
             contains_mouse: false,
             open_context_menu: false,
@@ -70,6 +72,7 @@ impl TopPanel {
                 }
 
                 self.contains_mouse = ui.ui_contains_pointer();
+                self.height = ui.max_rect().height();
             });
 
             command = self.context_menu(
