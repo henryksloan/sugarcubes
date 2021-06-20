@@ -92,7 +92,9 @@ async fn main() {
         clear_background(WHITE);
 
         // Process keys, mouse etc.
-        let mouse_position: Vec2 = Vec2::from(mouse_position()) - vec2(0., top_panel.height);
+        let screen_mouse_position = Vec2::from(mouse_position());
+        let mouse_position: Vec2 = screen_mouse_position - vec2(0., top_panel.height);
+
         if let Mode::Edit = top_panel.mode {
             if !top_panel.contains_mouse && is_mouse_button_pressed(MouseButton::Left) {
                 let new_click_time = get_time();
@@ -248,10 +250,12 @@ async fn main() {
         }
 
         if let Some(editing_transition) = &mut editing_transition {
+            // Workaround for macroquad UI camera bug
+            set_default_camera();
             root_ui().push_skin(&editbox_skin);
             widgets::Window::new(
                 hash!("win", editing_transition.2, editing_transition.3),
-                editing_transition.0,
+                editing_transition.0 + vec2(0., top_panel.height),
                 transition_input_size,
             )
             .titlebar(false)
@@ -268,7 +272,7 @@ async fn main() {
         if let Some(tuple) = editing_transition.clone() {
             if is_key_pressed(KeyCode::Enter)
                 || (is_mouse_button_pressed(MouseButton::Left)
-                    && !root_ui().is_mouse_over(mouse_position))
+                    && !root_ui().is_mouse_over(screen_mouse_position))
             {
                 fa.automaton.add_transition(FiniteAutomatonTransition::new(
                     tuple.2,
