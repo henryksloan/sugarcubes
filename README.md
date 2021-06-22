@@ -43,8 +43,7 @@ Sugarcubes is in a very early stage of development, having only basic support fo
         * Click-drag starting on the background
         * Movement and deletion of multiple objects
 * Improved simulation mode
-    * Implement accept/reject detection and display
-    * Reset AND rewind buttons
+    * Rewind button (this may require some sophistication to avoid combinatoric memory usage)
 * Saving
     * Investigate starting out with JFLAP-compatibility or a custom file format
 * Other simulation actions
