@@ -37,10 +37,10 @@ async fn main() {
 
     let mut fa = FiniteAutomaton::default();
     let mut states = States::new();
-    let s0 = states.add_state(&mut fa, vec2(200., 300.));
-    let s1 = states.add_state(&mut fa, vec2(400., 200.));
-    let s2 = states.add_state(&mut fa, vec2(400., 400.));
-    let s3 = states.add_state(&mut fa, vec2(600., 400.));
+    let s0 = states.add_state(&mut fa, vec2(200., 270.));
+    let s1 = states.add_state(&mut fa, vec2(400., 170.));
+    let s2 = states.add_state(&mut fa, vec2(400., 370.));
+    let s3 = states.add_state(&mut fa, vec2(600., 370.));
 
     fa.automaton.set_initial(s0);
     fa.automaton.set_final(s2, true);
@@ -92,7 +92,9 @@ async fn main() {
         clear_background(WHITE);
 
         // Process keys, mouse etc.
-        let mouse_position: Vec2 = mouse_position().into();
+        let screen_mouse_position = Vec2::from(mouse_position());
+        let mouse_position: Vec2 = screen_mouse_position - vec2(0., top_panel.height);
+
         if let Mode::Edit = top_panel.mode {
             if !top_panel.contains_mouse && is_mouse_button_pressed(MouseButton::Left) {
                 let new_click_time = get_time();
@@ -142,7 +144,7 @@ async fn main() {
 
             if !top_panel.contains_mouse && is_mouse_button_pressed(MouseButton::Right) {
                 top_panel.open_context_menu = true;
-                top_panel.context_menu_pos = mouse_position;
+                top_panel.context_menu_pos = mouse_position + vec2(0., top_panel.height);
                 if let Some(state) = states.point_in_some_state(mouse_position, &fa) {
                     selected_state = Some(state);
                     dragging_selected = false;
@@ -164,7 +166,7 @@ async fn main() {
         );
 
         if let Some(command) = command_opt {
-            command.execute(&mut fa, &mut states, &mut configurations);
+            command.execute(&mut fa, &mut states);
         }
 
         if let Some(new_configurations) = &top_panel.new_configurations {
@@ -174,6 +176,13 @@ async fn main() {
         if top_panel.should_step {
             configurations = fa.step_all(configurations);
         }
+
+        set_camera(&Camera2D::from_display_rect(Rect::new(
+            0.,
+            -top_panel.height,
+            screen_width(),
+            screen_height(),
+        )));
 
         // Draw things before egui
         if let Some(selected) = selected_state {
@@ -241,10 +250,12 @@ async fn main() {
         }
 
         if let Some(editing_transition) = &mut editing_transition {
+            // Workaround for macroquad UI camera bug
+            set_default_camera();
             root_ui().push_skin(&editbox_skin);
             widgets::Window::new(
                 hash!("win", editing_transition.2, editing_transition.3),
-                editing_transition.0,
+                editing_transition.0 + vec2(0., top_panel.height),
                 transition_input_size,
             )
             .titlebar(false)
@@ -261,7 +272,7 @@ async fn main() {
         if let Some(tuple) = editing_transition.clone() {
             if is_key_pressed(KeyCode::Enter)
                 || (is_mouse_button_pressed(MouseButton::Left)
-                    && !root_ui().is_mouse_over(mouse_position))
+                    && !root_ui().is_mouse_over(screen_mouse_position))
             {
                 fa.automaton.add_transition(FiniteAutomatonTransition::new(
                     tuple.2,

@@ -7,12 +7,15 @@ use sugarcubes_core::automata::{
 
 use macroquad::prelude::*;
 
+const CONFIGURATION_HEIGHT: f32 = 60.;
+
 pub enum Mode {
     Edit,
     Simulate,
 }
 
 pub struct TopPanel {
+    pub height: f32,
     pub mode: Mode,
     pub contains_mouse: bool,
     pub open_context_menu: bool,
@@ -29,6 +32,7 @@ pub struct TopPanel {
 impl TopPanel {
     pub fn new() -> Self {
         Self {
+            height: 0.,
             mode: Mode::Edit,
             contains_mouse: false,
             open_context_menu: false,
@@ -64,10 +68,11 @@ impl TopPanel {
 
                 if let Mode::Simulate = self.mode {
                     ui.separator();
-                    self.simulation_toolbar(ui, configurations);
+                    self.simulation_toolbar(ui, fa, configurations);
                 }
 
                 self.contains_mouse = ui.ui_contains_pointer();
+                self.height = ui.max_rect().height();
             });
 
             command = self.context_menu(
@@ -106,6 +111,7 @@ impl TopPanel {
     fn simulation_toolbar(
         &mut self,
         ui: &mut egui::Ui,
+        fa: &FiniteAutomaton,
         configurations: &mut Vec<FiniteAutomatonConfiguration>,
     ) {
         ui.horizontal(|ui| {
@@ -119,21 +125,59 @@ impl TopPanel {
                         .heading(),
                 );
 
+                ui.separator();
+
                 ui.horizontal(|ui| {
+                    ui.set_min_height(CONFIGURATION_HEIGHT);
                     for configuration in configurations {
+                        let (fill, text_color, message) =
+                            if configuration.remaining_string.is_empty() {
+                                if fa.automaton.is_final(configuration.state()) {
+                                    (
+                                        Some(egui::Color32::from_rgb(122, 240, 98)),
+                                        egui::Color32::BLACK,
+                                        "accept",
+                                    )
+                                } else {
+                                    (Some(egui::Color32::RED), egui::Color32::WHITE, "reject")
+                                }
+                            } else {
+                                (
+                                    None,
+                                    egui::Color32::WHITE,
+                                    configuration.remaining_string.as_str(),
+                                )
+                            };
+
                         if ui
                             .add_sized(
-                                [75., 50.],
-                                egui::Button::new(configuration.state().to_string()),
+                                [75., CONFIGURATION_HEIGHT],
+                                egui::Button::new(format!(
+                                    "{}\n{}",
+                                    configuration.state().to_string(),
+                                    message,
+                                ))
+                                .fill(fill)
+                                .text_color(text_color)
+                                .text_style(egui::TextStyle::Heading),
                             )
                             .clicked()
                         {}
                     }
                 });
 
-                if ui.button("Step").clicked() {
-                    self.should_step = true;
-                }
+                ui.separator();
+
+                ui.horizontal(|ui| {
+                    if ui.button("Step").clicked() {
+                        self.should_step = true;
+                    }
+
+                    if ui.button("Reset").clicked() {
+                        self.new_configurations =
+                            Some(fa.initial_configurations(&self.string_simulating));
+                    }
+                });
             });
         });
     }
