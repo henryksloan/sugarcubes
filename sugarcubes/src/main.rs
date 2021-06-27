@@ -3,7 +3,7 @@ mod states;
 mod top_panel;
 mod transitions;
 
-use crate::{states::*, top_panel::*, transitions::*};
+use crate::{command::*, states::*, top_panel::*, transitions::*};
 
 use sugarcubes_core::automata::{
     finite_automaton::{FiniteAutomaton, FiniteAutomatonTransition},
@@ -86,6 +86,9 @@ async fn main() {
     // If the user is editing a transition, this holds its (position, text, state_from, state_to)
     let mut editing_transition: Option<(Vec2, String, u32, u32)> = None;
 
+    let mut undo_stack: Vec<Command> = Vec::new();
+    let mut redo_stack: Vec<Command> = Vec::new();
+
     let mut last_click_time = 0.;
 
     loop {
@@ -163,10 +166,24 @@ async fn main() {
             &mouse_position,
             &mut selected_state,
             &mut selected_transition,
+            !undo_stack.is_empty(),
+            !redo_stack.is_empty(),
         );
 
         if let Some(command) = command_opt {
             command.execute(&mut fa, &mut states);
+            undo_stack.push(command);
+            redo_stack.clear();
+        } else if top_panel.undo_clicked {
+            if let Some(command) = undo_stack.pop() {
+                command.undo(&mut fa, &mut states);
+                redo_stack.push(command);
+            }
+        } else if top_panel.redo_clicked {
+            if let Some(command) = redo_stack.pop() {
+                command.execute(&mut fa, &mut states);
+                undo_stack.push(command);
+            }
         }
 
         if let Some(new_configurations) = &top_panel.new_configurations {

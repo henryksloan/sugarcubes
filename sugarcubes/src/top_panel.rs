@@ -18,6 +18,8 @@ pub struct TopPanel {
     pub height: f32,
     pub mode: Mode,
     pub contains_mouse: bool,
+    pub undo_clicked: bool,
+    pub redo_clicked: bool,
     pub open_context_menu: bool,
     pub context_menu_pos: Vec2,
 
@@ -35,6 +37,8 @@ impl TopPanel {
             height: 0.,
             mode: Mode::Edit,
             contains_mouse: false,
+            undo_clicked: false,
+            redo_clicked: false,
             open_context_menu: false,
             context_menu_pos: Vec2::ZERO,
 
@@ -55,16 +59,20 @@ impl TopPanel {
         mouse_position: &Vec2,
         selected_state: &mut Option<u32>,
         selected_transition: &mut Option<FiniteAutomatonTransition>,
+        can_undo: bool,
+        can_redo: bool,
     ) -> Option<Command> {
         self.should_step = false;
         self.contains_mouse = false;
+        self.undo_clicked = false;
+        self.redo_clicked = false;
         self.new_configurations = None;
 
         let mut command = None;
 
         egui_macroquad::ui(|egui_ctx| {
             egui::TopPanel::top("top_panel").show(egui_ctx, |ui| {
-                self.menu_bar(ui);
+                self.menu_bar(ui, can_undo, can_redo);
 
                 if let Mode::Simulate = self.mode {
                     ui.separator();
@@ -92,11 +100,27 @@ impl TopPanel {
         command
     }
 
-    fn menu_bar(&mut self, ui: &mut egui::Ui) {
+    fn menu_bar(&mut self, ui: &mut egui::Ui, can_undo: bool, can_redo: bool) {
         egui::menu::bar(ui, |ui| {
             egui::menu::menu(ui, "File", |ui| {
                 if ui.button("Open").clicked() {
                     // ...
+                }
+            });
+
+            egui::menu::menu(ui, "Edit", |ui| {
+                if ui
+                    .add(egui::widgets::Button::new("Undo").enabled(can_undo))
+                    .clicked()
+                {
+                    self.undo_clicked = true;
+                }
+
+                if ui
+                    .add(egui::widgets::Button::new("Redo").enabled(can_redo))
+                    .clicked()
+                {
+                    self.redo_clicked = true;
                 }
             });
 
@@ -220,9 +244,12 @@ impl TopPanel {
                                             fa.automaton.initial() == Some(selected);
                                         if ui.checkbox(&mut is_initial, "Initial").changed() {
                                             if is_initial {
-                                                command = Some(Command::SetInitial(selected));
+                                                command = Some(Command::SetInitial(
+                                                    selected,
+                                                    fa.automaton.initial(),
+                                                ));
                                             } else {
-                                                command = Some(Command::RemoveInitial);
+                                                command = Some(Command::RemoveInitial(selected));
                                             }
                                             *selected_state = None;
                                             ui.memory().close_popup();
