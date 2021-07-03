@@ -43,6 +43,19 @@ impl States {
         state
     }
 
+    pub fn try_add_state_with_id(
+        &mut self,
+        fa: &mut FiniteAutomaton,
+        position: Vec2,
+        id: u32,
+    ) -> bool {
+        let succeeded = fa.automaton.try_add_state_with_id(id);
+        if succeeded {
+            self.position_map.insert(id, position);
+        }
+        succeeded
+    }
+
     pub fn remove_state(&mut self, fa: &mut FiniteAutomaton, state: u32) {
         fa.automaton.remove_state(state);
         self.position_map.remove(&state);
