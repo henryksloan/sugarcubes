@@ -36,9 +36,8 @@ Sugarcubes is in a very early stage of development, having only basic support fo
 * Usable FA edit mode
     * Editing transitions with the context menu
     * State naming, labels (should these JFLAP features be merged?)
-    * Undo/redo system
-        * Command pattern
-        * Possibly include moving a state, other visual things as commands
+    * Implement undo/redo for moving and creating states
+    * Keyboard shortcuts for context menu operations
     * Multiple select mode
         * Click-drag starting on the background
         * Movement and deletion of multiple objects
