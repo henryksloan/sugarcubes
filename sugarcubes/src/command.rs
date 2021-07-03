@@ -5,13 +5,17 @@ use sugarcubes_core::automata::finite_automaton::{FiniteAutomaton, FiniteAutomat
 use macroquad::prelude::Vec2;
 
 // Defines all undo-able commands in edit mode
-// TODO: Add comments to each of these
 pub enum Command {
+    // The new initial state, and optionally the old one
     SetInitial(u32, Option<u32>),
+    // The initial state to be made non-initial
     RemoveInitial(u32),
+    // The state to be updated, and the new value of is_final
     SetFinal(u32, bool),
 
+    // The state, its position, and transitions involving it
     DeleteState(u32, Vec2, Vec<FiniteAutomatonTransition>),
+    // The transition to be deleted
     DeleteTransition(FiniteAutomatonTransition),
 }
 
