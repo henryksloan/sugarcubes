@@ -54,7 +54,7 @@ impl TopPanel {
     pub fn ui(
         &mut self,
         fa: &FiniteAutomaton,
-        states: &States,
+        states: &mut States,
         configurations: &mut Vec<FiniteAutomatonConfiguration>,
         mouse_position: &Vec2,
         selected_state: &mut Option<u32>,
@@ -210,7 +210,7 @@ impl TopPanel {
         &mut self,
         egui_ctx: &egui::CtxRef,
         fa: &FiniteAutomaton,
-        states: &States,
+        states: &mut States,
         mouse_position: &Vec2,
         selected_state: &mut Option<u32>,
         selected_transition: &mut Option<FiniteAutomatonTransition>,
@@ -265,7 +265,24 @@ impl TopPanel {
                                         ui.separator();
 
                                         if ui.button("Delete").clicked() {
-                                            command = Some(Command::DeleteState(selected));
+                                            let transitions = {
+                                                let transitions_from = fa
+                                                    .automaton
+                                                    .transitions_from(selected)
+                                                    .into_iter()
+                                                    .cloned();
+                                                let transitions_to = fa
+                                                    .automaton
+                                                    .transitions_to(selected)
+                                                    .into_iter()
+                                                    .cloned();
+                                                transitions_from.chain(transitions_to).collect()
+                                            };
+                                            command = Some(Command::DeleteState(
+                                                selected,
+                                                states.get_position(selected).clone(),
+                                                transitions,
+                                            ));
                                             *selected_state = None;
                                             ui.memory().close_popup();
                                         }

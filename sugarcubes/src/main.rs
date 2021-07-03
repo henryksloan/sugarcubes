@@ -161,7 +161,7 @@ async fn main() {
 
         let command_opt = top_panel.ui(
             &fa,
-            &states,
+            &mut states,
             &mut configurations,
             &mouse_position,
             &mut selected_state,
