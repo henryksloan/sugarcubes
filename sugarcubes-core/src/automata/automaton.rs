@@ -21,6 +21,18 @@ impl<T: Transition> Automaton<T> {
         id
     }
 
+    /// Add a state with a given ID, failing if the ID is taken,
+    /// and returning whether it succeeded
+    pub fn try_add_state_with_id(&mut self, id: u32) -> bool {
+        if self.states.contains_key(&id) {
+            false
+        } else {
+            self.states.insert(id, State {});
+            self.transitions.register_state(id);
+            true
+        }
+    }
+
     pub fn remove_state(&mut self, id: u32) {
         self.states.remove(&id);
         self.transitions.unregister_state(id);

@@ -39,11 +39,12 @@ impl Command {
             Self::RemoveInitial(state) => fa.automaton.set_initial(*state),
             Self::SetFinal(state, value) => fa.automaton.set_final(*state, !value),
 
-            Self::DeleteState(_, position, transitions) => {
-                // TODO: This doesn't explicitly guarantee that the ID won't change
-                states.add_state(fa, *position);
-                for &transition in transitions {
-                    fa.automaton.add_transition(transition)
+            Self::DeleteState(id, position, transitions) => {
+                let succeeded = states.try_add_state_with_id(fa, *position, *id);
+                if succeeded {
+                    for &transition in transitions {
+                        fa.automaton.add_transition(transition)
+                    }
                 }
             }
             Self::DeleteTransition(transition) => fa.automaton.add_transition(*transition),
