@@ -28,6 +28,7 @@ async fn main() {
             .font_size(25)
             .margin(RectOffset::new(0., 0., 5., 0.))
             .font(include_bytes!("../../assets/OpenSans-Regular.ttf"))
+            .unwrap()
             .build();
         Skin {
             editbox_style,
@@ -70,7 +71,9 @@ async fn main() {
 
     let gl = unsafe { get_internal_gl().quad_gl };
 
-    let font = load_ttf_font("./assets/OpenSans-Regular.ttf").await;
+    let font = load_ttf_font("./assets/OpenSans-Regular.ttf")
+        .await
+        .unwrap();
 
     // The offset of the click relative to the center of the selected state,
     // so that the mouse "grabs" the state at the point of the initial click
@@ -277,11 +280,9 @@ async fn main() {
             )
             .titlebar(false)
             .ui(&mut *root_ui(), |ui| {
-                ui.input_text(
-                    hash!(editing_transition.2, editing_transition.3),
-                    "",
-                    &mut editing_transition.1,
-                );
+                let id = hash!(editing_transition.2, editing_transition.3);
+                ui.input_text(id, "", &mut editing_transition.1);
+                ui.set_input_focus(id);
             });
             root_ui().pop_skin();
         }
