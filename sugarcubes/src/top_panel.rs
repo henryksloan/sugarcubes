@@ -71,7 +71,17 @@ impl TopPanel {
         let mut command = None;
 
         egui_macroquad::ui(|egui_ctx| {
-            egui::TopPanel::top("top_panel").show(egui_ctx, |ui| {
+            let mut fonts = egui::FontDefinitions::default();
+            fonts.family_and_size.insert(
+                egui::TextStyle::Button,
+                (egui::FontFamily::Proportional, 18.),
+            );
+            fonts
+                .family_and_size
+                .insert(egui::TextStyle::Body, (egui::FontFamily::Proportional, 19.));
+            egui_ctx.set_fonts(fonts);
+
+            egui::TopBottomPanel::top("top_panel").show(egui_ctx, |ui| {
                 self.menu_bar(ui, can_undo, can_redo);
 
                 if let Mode::Simulate = self.mode {
@@ -173,20 +183,19 @@ impl TopPanel {
                                 )
                             };
 
-                        if ui
-                            .add_sized(
-                                [75., CONFIGURATION_HEIGHT],
-                                egui::Button::new(format!(
-                                    "{}\n{}",
-                                    configuration.state().to_string(),
-                                    message,
-                                ))
-                                .fill(fill)
-                                .text_color(text_color)
-                                .text_style(egui::TextStyle::Heading),
-                            )
-                            .clicked()
-                        {}
+                        let mut button = egui::Button::new(format!(
+                            "{}\n{}",
+                            configuration.state().to_string(),
+                            message,
+                        ))
+                        .text_color(text_color)
+                        .text_style(egui::TextStyle::Heading);
+
+                        if let Some(fill) = fill {
+                            button = button.fill(fill);
+                        }
+
+                        if ui.add_sized([75., CONFIGURATION_HEIGHT], button).clicked() {}
                     }
                 });
 
@@ -330,12 +339,13 @@ impl TopPanel {
             .collapsible(false)
             .title_bar(true)
             .show(egui_ctx, |ui| {
+                // TODO: Checking for lost_focus AND enter pressed no longer works; fix that
+                //     || (text_edit.lost_focus() && ui.input().key_pressed(egui::Key::Enter))
                 let text_edit = ui.add(egui::TextEdit::singleline(&mut self.string_input));
+                text_edit.request_focus();
 
                 ui.horizontal(|ui| {
-                    if ui.button("Ok").clicked()
-                        || (text_edit.lost_focus() && ui.input().key_pressed(egui::Key::Enter))
-                    {
+                    if ui.button("Ok").clicked() || ui.input().key_pressed(egui::Key::Enter) {
                         self.new_configurations =
                             Some(fa.initial_configurations(&self.string_input));
                         self.mode = Mode::Simulate;
