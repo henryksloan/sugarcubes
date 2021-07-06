@@ -15,6 +15,8 @@ pub enum Command {
 
     // The state's ID and position
     CreateState(u32, Vec2),
+    // The transition to be added
+    CreateTransition(FiniteAutomatonTransition),
 
     // The state, its position, and transitions involving it
     DeleteState(u32, Vec2, Vec<FiniteAutomatonTransition>),
@@ -32,6 +34,7 @@ impl Command {
             Self::CreateState(state, pos) => {
                 states.try_add_state_with_id(fa, pos, state);
             }
+            Self::CreateTransition(transition) => fa.automaton.add_transition(transition),
 
             Self::DeleteState(state, _, _) => states.remove_state(fa, state),
             Self::DeleteTransition(transition) => fa.automaton.remove_transition(transition),
@@ -51,6 +54,7 @@ impl Command {
             Self::SetFinal(state, value) => fa.automaton.set_final(*state, !value),
 
             Self::CreateState(state, _) => states.remove_state(fa, *state),
+            Self::CreateTransition(transition) => fa.automaton.remove_transition(*transition),
 
             Self::DeleteState(id, position, transitions) => {
                 let succeeded = states.try_add_state_with_id(fa, *position, *id);

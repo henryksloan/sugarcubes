@@ -334,11 +334,18 @@ async fn main() {
                 || (is_mouse_button_pressed(MouseButton::Left)
                     && !root_ui().is_mouse_over(screen_mouse_position))
             {
-                fa.automaton.add_transition(FiniteAutomatonTransition::new(
+                let transition = FiniteAutomatonTransition::new(
                     tuple.2,
                     tuple.3,
                     tuple.1.chars().next().unwrap_or(EMPTY_STRING),
-                ));
+                );
+                execute(
+                    Command::CreateTransition(transition),
+                    &mut fa,
+                    &mut states,
+                    &mut undo_stack,
+                    &mut redo_stack,
+                );
                 editing_transition = None;
             } else if is_key_pressed(KeyCode::Escape) {
                 editing_transition = None;
