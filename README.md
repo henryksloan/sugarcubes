@@ -34,9 +34,7 @@ Sugarcubes is in a very early stage of development, having only basic support fo
 
 ## Next steps
 * Usable FA edit mode
-    * Editing transitions with the context menu
     * State naming, labels (should these JFLAP features be merged?)
-    * Implement undo/redo for moving and creating states
     * Keyboard shortcuts for context menu operations
     * Multiple select mode
         * Click-drag starting on the background
@@ -48,6 +46,9 @@ Sugarcubes is in a very early stage of development, having only basic support fo
 * Other simulation actions
     * Fast run
     * Multiple run
+* Under consideration
+    * Implement undo/redo for moving
+    * Editing transitions with the context menu
 
 ## Eventual goals
 * More automata
