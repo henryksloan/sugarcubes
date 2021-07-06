@@ -60,4 +60,30 @@ impl SimulateAutomaton for FiniteAutomaton {
             .flat_map(|configuration| self.step(configuration))
             .collect()
     }
+
+    fn check_input(&self, input: &str) -> bool {
+        let mut configurations = self.initial_configurations(input);
+
+        // TODO: Implement warnings rather than a hard limit
+        // This could be implemented with a different struct
+        // that holds configurations and controls progression.
+        // Probably include "continue?" warnings WITH "don't show this again",
+        // but take steps to avoid unresponsiveness.
+        const MAX_ITERS: usize = 1000;
+        for _ in 0..MAX_ITERS {
+            if configurations.is_empty() {
+                return false;
+            }
+
+            if configurations.iter().any(|conf| {
+                conf.remaining_string.is_empty() && self.automaton.is_final(conf.state())
+            }) {
+                return true;
+            }
+
+            configurations = self.step_all(configurations);
+        }
+
+        return false;
+    }
 }

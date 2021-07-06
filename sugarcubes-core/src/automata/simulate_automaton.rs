@@ -18,4 +18,8 @@ pub trait SimulateAutomaton {
         &self,
         configurations: Vec<Self::ConfigurationType>,
     ) -> Vec<Self::ConfigurationType>;
+
+    /// Check whether an input is accepted,
+    // Eventually, this should produce more details about the success/failure
+    fn check_input(&self, input: &str) -> bool;
 }
