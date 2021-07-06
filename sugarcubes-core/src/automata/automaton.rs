@@ -12,10 +12,9 @@ pub struct Automaton<T: Transition> {
 }
 
 impl<T: Transition> Automaton<T> {
-    /// Creates a new state with the smallest free ID, returning the ID
+    /// Create a new state with the smallest free ID, returning the ID
     pub fn add_new_state(&mut self) -> u32 {
-        let used_ids: HashSet<u32> = self.states.keys().cloned().collect();
-        let id = (0..).filter(|id| !used_ids.contains(id)).next().unwrap();
+        let id = self.get_next_state_id();
         self.states.insert(id, State {});
         self.transitions.register_state(id);
         id
@@ -42,6 +41,12 @@ impl<T: Transition> Automaton<T> {
             self.initial_state = None;
         }
         self.final_states.remove(&id);
+    }
+
+    /// Generate an ID by finding the first unused ordinal
+    pub fn get_next_state_id(&mut self) -> u32 {
+        let used_ids: HashSet<u32> = self.states.keys().cloned().collect();
+        (0..).filter(|id| !used_ids.contains(id)).next().unwrap()
     }
 
     pub fn states(&self) -> Vec<&u32> {

@@ -16,6 +16,42 @@ use std::collections::HashMap;
 
 const DOUBLE_CLICK_DELAY: f64 = 0.25;
 
+fn execute(
+    command: Command,
+    fa: &mut FiniteAutomaton,
+    states: &mut States,
+    undo_stack: &mut Vec<Command>,
+    redo_stack: &mut Vec<Command>,
+) {
+    command.execute(fa, states);
+    undo_stack.push(command);
+    redo_stack.clear();
+}
+
+fn undo(
+    fa: &mut FiniteAutomaton,
+    states: &mut States,
+    undo_stack: &mut Vec<Command>,
+    redo_stack: &mut Vec<Command>,
+) {
+    if let Some(command) = undo_stack.pop() {
+        command.undo(fa, states);
+        redo_stack.push(command);
+    }
+}
+
+fn redo(
+    fa: &mut FiniteAutomaton,
+    states: &mut States,
+    undo_stack: &mut Vec<Command>,
+    redo_stack: &mut Vec<Command>,
+) {
+    if let Some(command) = redo_stack.pop() {
+        command.execute(fa, states);
+        undo_stack.push(command);
+    }
+}
+
 #[macroquad::main("Sugarcubes")]
 async fn main() {
     let mut top_panel = TopPanel::new();
@@ -112,7 +148,15 @@ async fn main() {
                     if let Some(state) = states.point_in_some_state(mouse_position, &fa) {
                         creating_transition_from = Some(state);
                     } else {
-                        selected_state = Some(states.add_state(&mut fa, mouse_position));
+                        let id = fa.automaton.get_next_state_id();
+                        execute(
+                            Command::CreateState(id, mouse_position),
+                            &mut fa,
+                            &mut states,
+                            &mut undo_stack,
+                            &mut redo_stack,
+                        );
+                        selected_state = Some(id);
                         state_drag_offset = Vec2::ZERO;
                         dragging_selected = true;
                     }
@@ -175,22 +219,18 @@ async fn main() {
 
         if let Some(command) = command_opt {
             match command {
-                TopPanelCommand::Command(command) => {
-                    command.execute(&mut fa, &mut states);
-                    undo_stack.push(command);
-                    redo_stack.clear();
-                }
+                TopPanelCommand::Command(command) => execute(
+                    command,
+                    &mut fa,
+                    &mut states,
+                    &mut undo_stack,
+                    &mut redo_stack,
+                ),
                 TopPanelCommand::Undo => {
-                    if let Some(command) = undo_stack.pop() {
-                        command.undo(&mut fa, &mut states);
-                        redo_stack.push(command);
-                    }
+                    undo(&mut fa, &mut states, &mut undo_stack, &mut redo_stack)
                 }
                 TopPanelCommand::Redo => {
-                    if let Some(command) = redo_stack.pop() {
-                        command.execute(&mut fa, &mut states);
-                        undo_stack.push(command);
-                    }
+                    redo(&mut fa, &mut states, &mut undo_stack, &mut redo_stack)
                 }
                 TopPanelCommand::Step => configurations = fa.step_all(configurations),
                 TopPanelCommand::StartSimulation(new_configurations) => {

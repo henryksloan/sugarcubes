@@ -13,6 +13,9 @@ pub enum Command {
     // The state to be updated, and the new value of is_final
     SetFinal(u32, bool),
 
+    // The state's ID and position
+    CreateState(u32, Vec2),
+
     // The state, its position, and transitions involving it
     DeleteState(u32, Vec2, Vec<FiniteAutomatonTransition>),
     // The transition to be deleted
@@ -25,6 +28,10 @@ impl Command {
             Self::SetInitial(state, _) => fa.automaton.set_initial(state),
             Self::RemoveInitial(_) => fa.automaton.remove_initial(),
             Self::SetFinal(state, value) => fa.automaton.set_final(state, value),
+
+            Self::CreateState(state, pos) => {
+                states.try_add_state_with_id(fa, pos, state);
+            }
 
             Self::DeleteState(state, _, _) => states.remove_state(fa, state),
             Self::DeleteTransition(transition) => fa.automaton.remove_transition(transition),
@@ -42,6 +49,8 @@ impl Command {
             }
             Self::RemoveInitial(state) => fa.automaton.set_initial(*state),
             Self::SetFinal(state, value) => fa.automaton.set_final(*state, !value),
+
+            Self::CreateState(state, _) => states.remove_state(fa, *state),
 
             Self::DeleteState(id, position, transitions) => {
                 let succeeded = states.try_add_state_with_id(fa, *position, *id);
