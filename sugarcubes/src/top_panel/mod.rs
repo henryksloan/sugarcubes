@@ -1,3 +1,7 @@
+mod input_window;
+
+use input_window::InputWindow;
+
 use crate::{command::*, states::*};
 
 use sugarcubes_core::automata::{
@@ -29,9 +33,10 @@ pub struct TopPanel {
     pub open_context_menu: bool,
     pub context_menu_pos: Vec2,
 
-    open_string_input_window: bool,
-    string_input: String,
-    string_simulating: String,
+    pub string_simulating: String,
+
+    simulate_input_window: InputWindow,
+    fast_run_input_window: InputWindow,
 }
 
 impl TopPanel {
@@ -43,9 +48,10 @@ impl TopPanel {
             open_context_menu: false,
             context_menu_pos: Vec2::ZERO,
 
-            open_string_input_window: false,
-            string_input: String::new(),
             string_simulating: String::new(),
+
+            simulate_input_window: InputWindow::new(),
+            fast_run_input_window: InputWindow::new(),
         }
     }
 
@@ -109,8 +115,18 @@ impl TopPanel {
                 command = Some(TopPanelCommand::Command(context_menu_command));
             }
 
-            if self.open_string_input_window {
-                let new_configurations = self.string_input_window(egui_ctx, fa);
+            if self.simulate_input_window.open {
+                let mut new_configurations = None;
+                let (hit_ok, contains_mouse) = self.simulate_input_window.show(egui_ctx);
+                if hit_ok {
+                    new_configurations =
+                        Some(fa.initial_configurations(&self.simulate_input_window.input));
+                    self.mode = Mode::Simulate;
+                    self.string_simulating = self.simulate_input_window.input.clone();
+                    self.simulate_input_window.open = false;
+                }
+                self.contains_mouse |= contains_mouse;
+
                 if let Some(new_configurations) = new_configurations {
                     command = Some(TopPanelCommand::StartSimulation(new_configurations));
                 }
@@ -130,7 +146,7 @@ impl TopPanel {
 
         egui::menu::bar(ui, |ui| {
             egui::menu::menu(ui, "File", |ui| {
-                if ui.button("Open").clicked() {
+                if ui.button("Open...").clicked() {
                     // ...
                 }
             });
@@ -152,8 +168,12 @@ impl TopPanel {
             });
 
             egui::menu::menu(ui, "Simulate", |ui| {
-                if ui.button("Simulate String").clicked() {
-                    self.open_string_input_window = true;
+                if ui.button("Simulate String...").clicked() {
+                    self.simulate_input_window.open = true;
+                }
+
+                if ui.button("Fast Run...").clicked() {
+                    self.fast_run_input_window.open = true;
                 }
             });
         });
@@ -176,8 +196,11 @@ impl TopPanel {
 
             ui.vertical(|ui| {
                 ui.add(
-                    egui::Label::new(format!("Simulating \"{}\"", self.string_simulating))
-                        .heading(),
+                    egui::Label::new(format!(
+                        "Simulating \"{}\"",
+                        self.simulate_input_window.input
+                    ))
+                    .heading(),
                 );
 
                 ui.separator();
@@ -353,52 +376,5 @@ impl TopPanel {
         });
 
         command
-    }
-
-    fn string_input_window(
-        &mut self,
-        egui_ctx: &egui::CtxRef,
-        fa: &FiniteAutomaton,
-    ) -> Option<Vec<FiniteAutomatonConfiguration>> {
-        let mut new_configurations = None;
-
-        let mut window_open = true;
-        let response = egui::Window::new("Input string")
-            .open(&mut window_open)
-            .resizable(false)
-            .collapsible(false)
-            .title_bar(true)
-            .show(egui_ctx, |ui| {
-                // TODO: Checking for lost_focus AND enter pressed no longer works; fix that
-                //     || (text_edit.lost_focus() && ui.input().key_pressed(egui::Key::Enter))
-                let text_edit = ui.add(egui::TextEdit::singleline(&mut self.string_input));
-                text_edit.request_focus();
-
-                ui.horizontal(|ui| {
-                    if ui.button("Ok").clicked() || ui.input().key_pressed(egui::Key::Enter) {
-                        new_configurations = Some(fa.initial_configurations(&self.string_input));
-                        self.mode = Mode::Simulate;
-                        self.string_simulating = self.string_input.clone();
-                        self.open_string_input_window = false;
-                    }
-
-                    if ui.button("Cancel").clicked() {
-                        self.open_string_input_window = false;
-                    }
-                });
-            });
-        if !window_open {
-            self.open_string_input_window = false;
-        }
-
-        if !self.open_string_input_window {
-            self.string_input.clear();
-        }
-
-        if let Some(response) = response {
-            self.contains_mouse |= response.hovered();
-        }
-
-        new_configurations
     }
 }
