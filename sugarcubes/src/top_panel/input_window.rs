@@ -1,11 +1,13 @@
 pub struct InputWindow {
+    id: egui::Id,
     pub open: bool,
     pub input: String,
 }
 
 impl InputWindow {
-    pub fn new() -> Self {
+    pub fn new(id: &str) -> Self {
         Self {
+            id: egui::Id::new(id),
             open: false,
             input: String::new(),
         }
@@ -17,6 +19,7 @@ impl InputWindow {
 
         let mut window_open = true;
         let response = egui::Window::new("Input string")
+            .id(self.id)
             .open(&mut window_open)
             .resizable(false)
             .collapsible(false)
@@ -32,7 +35,7 @@ impl InputWindow {
                         hit_ok = true;
                     }
 
-                    if ui.button("Cancel").clicked() {
+                    if ui.button("Cancel").clicked() || ui.input().key_pressed(egui::Key::Escape) {
                         self.open = false;
                     }
                 });

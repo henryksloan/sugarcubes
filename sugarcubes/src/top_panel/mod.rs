@@ -12,6 +12,8 @@ use sugarcubes_core::automata::{
 use macroquad::prelude::*;
 
 const CONFIGURATION_HEIGHT: f32 = 60.;
+pub const ACCEPT_COLOR: egui::Color32 = egui::Color32::from_rgb(122, 240, 98);
+pub const REJECT_COLOR: egui::Color32 = egui::Color32::RED;
 
 pub enum Mode {
     Edit,
@@ -33,10 +35,12 @@ pub struct TopPanel {
     pub open_context_menu: bool,
     pub context_menu_pos: Vec2,
 
-    pub string_simulating: String,
-
     simulate_input_window: InputWindow,
+    string_simulating: String,
+
     fast_run_input_window: InputWindow,
+    fast_run_string: String,
+    fast_run_result: Option<bool>,
 }
 
 impl TopPanel {
@@ -48,10 +52,12 @@ impl TopPanel {
             open_context_menu: false,
             context_menu_pos: Vec2::ZERO,
 
+            simulate_input_window: InputWindow::new("simulate"),
             string_simulating: String::new(),
 
-            simulate_input_window: InputWindow::new(),
-            fast_run_input_window: InputWindow::new(),
+            fast_run_input_window: InputWindow::new("fast_run"),
+            fast_run_string: String::new(),
+            fast_run_result: None,
         }
     }
 
@@ -118,6 +124,8 @@ impl TopPanel {
             if self.simulate_input_window.open {
                 let mut new_configurations = None;
                 let (hit_ok, contains_mouse) = self.simulate_input_window.show(egui_ctx);
+                self.contains_mouse |= contains_mouse;
+
                 if hit_ok {
                     new_configurations =
                         Some(fa.initial_configurations(&self.simulate_input_window.input));
@@ -125,10 +133,47 @@ impl TopPanel {
                     self.string_simulating = self.simulate_input_window.input.clone();
                     self.simulate_input_window.open = false;
                 }
-                self.contains_mouse |= contains_mouse;
 
                 if let Some(new_configurations) = new_configurations {
                     command = Some(TopPanelCommand::StartSimulation(new_configurations));
+                }
+
+                if !self.simulate_input_window.open {
+                    self.simulate_input_window.input.clear();
+                }
+            }
+
+            if self.fast_run_input_window.open {
+                let (hit_ok, contains_mouse) = self.fast_run_input_window.show(egui_ctx);
+                self.contains_mouse |= contains_mouse;
+
+                if hit_ok {
+                    self.fast_run_input_window.open = false;
+                    self.fast_run_string = self.fast_run_input_window.input.clone();
+                    self.fast_run_result = Some(fa.check_input(&self.fast_run_input_window.input));
+                }
+
+                if !self.fast_run_input_window.open {
+                    self.fast_run_input_window.input.clear();
+                }
+            }
+
+            if let Some(fast_run_result) = self.fast_run_result {
+                let mut result_open = self.fast_run_result.is_some();
+                egui::Window::new("Fast Run Result")
+                    .open(&mut result_open)
+                    .resizable(false)
+                    .collapsible(false)
+                    .show(egui_ctx, |ui| {
+                        ui.label(format!("Result for string \"{}\": ", self.fast_run_string));
+                        if fast_run_result {
+                            ui.add(egui::widgets::Label::new("Accepted").text_color(ACCEPT_COLOR));
+                        } else {
+                            ui.add(egui::widgets::Label::new("Rejected").text_color(REJECT_COLOR));
+                        }
+                    });
+                if !result_open {
+                    self.fast_run_result = None;
                 }
             }
         });
@@ -196,11 +241,8 @@ impl TopPanel {
 
             ui.vertical(|ui| {
                 ui.add(
-                    egui::Label::new(format!(
-                        "Simulating \"{}\"",
-                        self.simulate_input_window.input
-                    ))
-                    .heading(),
+                    egui::Label::new(format!("Simulating \"{}\"", self.string_simulating))
+                        .heading(),
                 );
 
                 ui.separator();
