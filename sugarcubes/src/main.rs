@@ -174,27 +174,29 @@ async fn main() {
         );
 
         if let Some(command) = command_opt {
-            command.execute(&mut fa, &mut states);
-            undo_stack.push(command);
-            redo_stack.clear();
-        } else if top_panel.undo_clicked {
-            if let Some(command) = undo_stack.pop() {
-                command.undo(&mut fa, &mut states);
-                redo_stack.push(command);
+            match command {
+                TopPanelCommand::Command(command) => {
+                    command.execute(&mut fa, &mut states);
+                    undo_stack.push(command);
+                    redo_stack.clear();
+                }
+                TopPanelCommand::Undo => {
+                    if let Some(command) = undo_stack.pop() {
+                        command.undo(&mut fa, &mut states);
+                        redo_stack.push(command);
+                    }
+                }
+                TopPanelCommand::Redo => {
+                    if let Some(command) = redo_stack.pop() {
+                        command.execute(&mut fa, &mut states);
+                        undo_stack.push(command);
+                    }
+                }
+                TopPanelCommand::Step => configurations = fa.step_all(configurations),
+                TopPanelCommand::StartSimulation(new_configurations) => {
+                    configurations = new_configurations.to_vec()
+                }
             }
-        } else if top_panel.redo_clicked {
-            if let Some(command) = redo_stack.pop() {
-                command.execute(&mut fa, &mut states);
-                undo_stack.push(command);
-            }
-        }
-
-        if let Some(new_configurations) = &top_panel.new_configurations {
-            configurations = new_configurations.to_vec();
-        }
-
-        if top_panel.should_step {
-            configurations = fa.step_all(configurations);
         }
 
         set_camera(&Camera2D::from_display_rect(Rect::new(
