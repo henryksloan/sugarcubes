@@ -14,20 +14,23 @@ pub enum Mode {
     Simulate,
 }
 
+pub enum TopPanelCommand {
+    Command(Command),
+    Undo,
+    Redo,
+    Step,
+    StartSimulation(Vec<FiniteAutomatonConfiguration>),
+}
+
 pub struct TopPanel {
     pub height: f32,
     pub mode: Mode,
     pub contains_mouse: bool,
-    pub undo_clicked: bool,
-    pub redo_clicked: bool,
     pub open_context_menu: bool,
     pub context_menu_pos: Vec2,
 
     open_string_input_window: bool,
     string_input: String,
-    pub new_configurations: Option<Vec<FiniteAutomatonConfiguration>>,
-
-    pub should_step: bool,
     string_simulating: String,
 }
 
@@ -37,16 +40,11 @@ impl TopPanel {
             height: 0.,
             mode: Mode::Edit,
             contains_mouse: false,
-            undo_clicked: false,
-            redo_clicked: false,
             open_context_menu: false,
             context_menu_pos: Vec2::ZERO,
 
             open_string_input_window: false,
             string_input: String::new(),
-            new_configurations: None,
-
-            should_step: false,
             string_simulating: String::new(),
         }
     }
@@ -61,12 +59,8 @@ impl TopPanel {
         selected_transition: &mut Option<FiniteAutomatonTransition>,
         can_undo: bool,
         can_redo: bool,
-    ) -> Option<Command> {
-        self.should_step = false;
+    ) -> Option<TopPanelCommand> {
         self.contains_mouse = false;
-        self.undo_clicked = false;
-        self.redo_clicked = false;
-        self.new_configurations = None;
 
         let mut command = None;
 
@@ -82,18 +76,27 @@ impl TopPanel {
             egui_ctx.set_fonts(fonts);
 
             egui::TopBottomPanel::top("top_panel").show(egui_ctx, |ui| {
-                self.menu_bar(ui, can_undo, can_redo);
+                let menu_bar_command = self.menu_bar(ui, can_undo, can_redo);
+
+                if let Some(menu_bar_command) = menu_bar_command {
+                    command = Some(menu_bar_command);
+                }
 
                 if let Mode::Simulate = self.mode {
                     ui.separator();
-                    self.simulation_toolbar(ui, fa, configurations);
+                    let simulation_toolbar_command =
+                        self.simulation_toolbar(ui, fa, configurations);
+
+                    if let Some(simulation_toolbar_command) = simulation_toolbar_command {
+                        command = Some(simulation_toolbar_command);
+                    }
                 }
 
                 self.contains_mouse = ui.ui_contains_pointer();
                 self.height = ui.max_rect().height();
             });
 
-            command = self.context_menu(
+            let context_menu_command = self.context_menu(
                 egui_ctx,
                 fa,
                 states,
@@ -102,15 +105,29 @@ impl TopPanel {
                 selected_transition,
             );
 
+            if let Some(context_menu_command) = context_menu_command {
+                command = Some(TopPanelCommand::Command(context_menu_command));
+            }
+
             if self.open_string_input_window {
-                self.string_input_window(egui_ctx, fa);
+                let new_configurations = self.string_input_window(egui_ctx, fa);
+                if let Some(new_configurations) = new_configurations {
+                    command = Some(TopPanelCommand::StartSimulation(new_configurations));
+                }
             }
         });
 
         command
     }
 
-    fn menu_bar(&mut self, ui: &mut egui::Ui, can_undo: bool, can_redo: bool) {
+    fn menu_bar(
+        &mut self,
+        ui: &mut egui::Ui,
+        can_undo: bool,
+        can_redo: bool,
+    ) -> Option<TopPanelCommand> {
+        let mut command = None;
+
         egui::menu::bar(ui, |ui| {
             egui::menu::menu(ui, "File", |ui| {
                 if ui.button("Open").clicked() {
@@ -123,14 +140,14 @@ impl TopPanel {
                     .add(egui::widgets::Button::new("Undo").enabled(can_undo))
                     .clicked()
                 {
-                    self.undo_clicked = true;
+                    command = Some(TopPanelCommand::Undo);
                 }
 
                 if ui
                     .add(egui::widgets::Button::new("Redo").enabled(can_redo))
                     .clicked()
                 {
-                    self.redo_clicked = true;
+                    command = Some(TopPanelCommand::Redo);
                 }
             });
 
@@ -140,6 +157,8 @@ impl TopPanel {
                 }
             });
         });
+
+        command
     }
 
     fn simulation_toolbar(
@@ -147,7 +166,9 @@ impl TopPanel {
         ui: &mut egui::Ui,
         fa: &FiniteAutomaton,
         configurations: &mut Vec<FiniteAutomatonConfiguration>,
-    ) {
+    ) -> Option<TopPanelCommand> {
+        let mut command = None;
+
         ui.horizontal(|ui| {
             if ui.button("X").clicked() {
                 self.mode = Mode::Edit;
@@ -203,16 +224,19 @@ impl TopPanel {
 
                 ui.horizontal(|ui| {
                     if ui.button("Step").clicked() {
-                        self.should_step = true;
+                        command = Some(TopPanelCommand::Step);
                     }
 
                     if ui.button("Reset").clicked() {
-                        self.new_configurations =
-                            Some(fa.initial_configurations(&self.string_simulating));
+                        command = Some(TopPanelCommand::StartSimulation(
+                            fa.initial_configurations(&self.string_simulating),
+                        ))
                     }
                 });
             });
         });
+
+        command
     }
 
     fn context_menu(
@@ -331,7 +355,13 @@ impl TopPanel {
         command
     }
 
-    fn string_input_window(&mut self, egui_ctx: &egui::CtxRef, fa: &FiniteAutomaton) {
+    fn string_input_window(
+        &mut self,
+        egui_ctx: &egui::CtxRef,
+        fa: &FiniteAutomaton,
+    ) -> Option<Vec<FiniteAutomatonConfiguration>> {
+        let mut new_configurations = None;
+
         let mut window_open = true;
         let response = egui::Window::new("Input string")
             .open(&mut window_open)
@@ -346,8 +376,7 @@ impl TopPanel {
 
                 ui.horizontal(|ui| {
                     if ui.button("Ok").clicked() || ui.input().key_pressed(egui::Key::Enter) {
-                        self.new_configurations =
-                            Some(fa.initial_configurations(&self.string_input));
+                        new_configurations = Some(fa.initial_configurations(&self.string_input));
                         self.mode = Mode::Simulate;
                         self.string_simulating = self.string_input.clone();
                         self.open_string_input_window = false;
@@ -369,5 +398,7 @@ impl TopPanel {
         if let Some(response) = response {
             self.contains_mouse |= response.hovered();
         }
+
+        new_configurations
     }
 }

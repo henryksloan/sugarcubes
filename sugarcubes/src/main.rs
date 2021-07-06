@@ -16,6 +16,42 @@ use std::collections::HashMap;
 
 const DOUBLE_CLICK_DELAY: f64 = 0.25;
 
+fn execute(
+    command: Command,
+    fa: &mut FiniteAutomaton,
+    states: &mut States,
+    undo_stack: &mut Vec<Command>,
+    redo_stack: &mut Vec<Command>,
+) {
+    command.execute(fa, states);
+    undo_stack.push(command);
+    redo_stack.clear();
+}
+
+fn undo(
+    fa: &mut FiniteAutomaton,
+    states: &mut States,
+    undo_stack: &mut Vec<Command>,
+    redo_stack: &mut Vec<Command>,
+) {
+    if let Some(command) = undo_stack.pop() {
+        command.undo(fa, states);
+        redo_stack.push(command);
+    }
+}
+
+fn redo(
+    fa: &mut FiniteAutomaton,
+    states: &mut States,
+    undo_stack: &mut Vec<Command>,
+    redo_stack: &mut Vec<Command>,
+) {
+    if let Some(command) = redo_stack.pop() {
+        command.execute(fa, states);
+        undo_stack.push(command);
+    }
+}
+
 #[macroquad::main("Sugarcubes")]
 async fn main() {
     let mut top_panel = TopPanel::new();
@@ -112,7 +148,15 @@ async fn main() {
                     if let Some(state) = states.point_in_some_state(mouse_position, &fa) {
                         creating_transition_from = Some(state);
                     } else {
-                        selected_state = Some(states.add_state(&mut fa, mouse_position));
+                        let id = fa.automaton.get_next_state_id();
+                        execute(
+                            Command::CreateState(id, mouse_position),
+                            &mut fa,
+                            &mut states,
+                            &mut undo_stack,
+                            &mut redo_stack,
+                        );
+                        selected_state = Some(id);
                         state_drag_offset = Vec2::ZERO;
                         dragging_selected = true;
                     }
@@ -174,27 +218,25 @@ async fn main() {
         );
 
         if let Some(command) = command_opt {
-            command.execute(&mut fa, &mut states);
-            undo_stack.push(command);
-            redo_stack.clear();
-        } else if top_panel.undo_clicked {
-            if let Some(command) = undo_stack.pop() {
-                command.undo(&mut fa, &mut states);
-                redo_stack.push(command);
+            match command {
+                TopPanelCommand::Command(command) => execute(
+                    command,
+                    &mut fa,
+                    &mut states,
+                    &mut undo_stack,
+                    &mut redo_stack,
+                ),
+                TopPanelCommand::Undo => {
+                    undo(&mut fa, &mut states, &mut undo_stack, &mut redo_stack)
+                }
+                TopPanelCommand::Redo => {
+                    redo(&mut fa, &mut states, &mut undo_stack, &mut redo_stack)
+                }
+                TopPanelCommand::Step => configurations = fa.step_all(configurations),
+                TopPanelCommand::StartSimulation(new_configurations) => {
+                    configurations = new_configurations.to_vec()
+                }
             }
-        } else if top_panel.redo_clicked {
-            if let Some(command) = redo_stack.pop() {
-                command.execute(&mut fa, &mut states);
-                undo_stack.push(command);
-            }
-        }
-
-        if let Some(new_configurations) = &top_panel.new_configurations {
-            configurations = new_configurations.to_vec();
-        }
-
-        if top_panel.should_step {
-            configurations = fa.step_all(configurations);
         }
 
         set_camera(&Camera2D::from_display_rect(Rect::new(
@@ -292,11 +334,18 @@ async fn main() {
                 || (is_mouse_button_pressed(MouseButton::Left)
                     && !root_ui().is_mouse_over(screen_mouse_position))
             {
-                fa.automaton.add_transition(FiniteAutomatonTransition::new(
+                let transition = FiniteAutomatonTransition::new(
                     tuple.2,
                     tuple.3,
                     tuple.1.chars().next().unwrap_or(EMPTY_STRING),
-                ));
+                );
+                execute(
+                    Command::CreateTransition(transition),
+                    &mut fa,
+                    &mut states,
+                    &mut undo_stack,
+                    &mut redo_stack,
+                );
                 editing_transition = None;
             } else if is_key_pressed(KeyCode::Escape) {
                 editing_transition = None;
