@@ -43,9 +43,8 @@ Sugarcubes is in a very early stage of development, having only basic support fo
     * Rewind button (this may require some sophistication to avoid combinatoric memory usage)
 * Saving
     * Investigate starting out with JFLAP-compatibility or a custom file format
-* Other simulation actions
-    * Fast run
-    * Multiple run
+* Multiple run mode
+    * Eventually support loading input files
 * Under consideration
     * Implement undo/redo for moving
     * Editing transitions with the context menu
