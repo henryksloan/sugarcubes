@@ -41,6 +41,8 @@ pub struct TopPanel {
     fast_run_input_window: InputWindow,
     fast_run_string: String,
     fast_run_result: Option<bool>,
+
+    multiple_run_strings: Vec<(String, Option<bool>)>,
 }
 
 impl TopPanel {
@@ -58,6 +60,13 @@ impl TopPanel {
             fast_run_input_window: InputWindow::new("fast_run"),
             fast_run_string: String::new(),
             fast_run_result: None,
+
+            multiple_run_strings: vec![
+                (String::new(), None),
+                (String::new(), None),
+                (String::new(), None),
+                (String::new(), None),
+            ],
         }
     }
 
@@ -106,6 +115,26 @@ impl TopPanel {
 
                 self.contains_mouse = ui.ui_contains_pointer();
                 self.height = ui.max_rect().height();
+            });
+
+            egui::SidePanel::left("multiple_run").show(egui_ctx, |ui| {
+                for (text, status) in self.multiple_run_strings.iter_mut() {
+                    ui.horizontal(|ui| {
+                        ui.add(egui::TextEdit::singleline(text));
+                        let label = match status {
+                            None => "⛶",
+                            Some(false) => "🗙",
+                            Some(true) => "✔",
+                        };
+                        ui.add(egui::Label::new(label));
+                    });
+                }
+
+                if ui.button("Run").clicked() {
+                    for (text, status) in self.multiple_run_strings.iter_mut() {
+                        *status = Some(fa.check_input(text));
+                    }
+                }
             });
 
             let context_menu_command = self.context_menu(
