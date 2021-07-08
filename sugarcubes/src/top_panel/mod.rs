@@ -29,6 +29,7 @@ pub enum TopPanelCommand {
 }
 
 pub struct TopPanel {
+    pub width: f32,
     pub height: f32,
     pub mode: Mode,
     pub contains_mouse: bool,
@@ -48,6 +49,7 @@ pub struct TopPanel {
 impl TopPanel {
     pub fn new() -> Self {
         Self {
+            width: 0.,
             height: 0.,
             mode: Mode::Edit,
             contains_mouse: false,
@@ -135,6 +137,8 @@ impl TopPanel {
                         *status = Some(fa.check_input(text));
                     }
                 }
+
+                self.width = ui.max_rect().width();
             });
 
             let context_menu_command = self.context_menu(
@@ -194,12 +198,18 @@ impl TopPanel {
                     .resizable(false)
                     .collapsible(false)
                     .show(egui_ctx, |ui| {
-                        ui.label(format!("Result for string \"{}\": ", self.fast_run_string));
-                        if fast_run_result {
-                            ui.add(egui::widgets::Label::new("Accepted").text_color(ACCEPT_COLOR));
-                        } else {
-                            ui.add(egui::widgets::Label::new("Rejected").text_color(REJECT_COLOR));
-                        }
+                        ui.horizontal(|ui| {
+                            ui.label(format!("Result for string \"{}\": ", self.fast_run_string));
+                            if fast_run_result {
+                                ui.add(
+                                    egui::widgets::Label::new("Accepted").text_color(ACCEPT_COLOR),
+                                );
+                            } else {
+                                ui.add(
+                                    egui::widgets::Label::new("Rejected").text_color(REJECT_COLOR),
+                                );
+                            }
+                        });
                     });
                 if !result_open {
                     self.fast_run_result = None;
