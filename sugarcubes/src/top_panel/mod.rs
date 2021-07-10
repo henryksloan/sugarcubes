@@ -6,7 +6,7 @@ use crate::{command::*, states::*};
 
 use sugarcubes_core::automata::{
     finite_automaton::{FiniteAutomaton, FiniteAutomatonConfiguration, FiniteAutomatonTransition},
-    Configuration, SimulateAutomaton,
+    Configuration, SimulateAutomaton, EMPTY_STRING,
 };
 
 use macroquad::prelude::*;
@@ -18,6 +18,7 @@ pub const REJECT_COLOR: egui::Color32 = egui::Color32::RED;
 pub enum Mode {
     Edit,
     Simulate,
+    MultipleRun,
 }
 
 pub enum TopPanelCommand {
@@ -29,6 +30,7 @@ pub enum TopPanelCommand {
 }
 
 pub struct TopPanel {
+    pub width: f32,
     pub height: f32,
     pub mode: Mode,
     pub contains_mouse: bool,
@@ -41,11 +43,14 @@ pub struct TopPanel {
     fast_run_input_window: InputWindow,
     fast_run_string: String,
     fast_run_result: Option<bool>,
+
+    multiple_run_strings: Vec<(String, Option<bool>)>,
 }
 
 impl TopPanel {
     pub fn new() -> Self {
         Self {
+            width: 0.,
             height: 0.,
             mode: Mode::Edit,
             contains_mouse: false,
@@ -58,6 +63,13 @@ impl TopPanel {
             fast_run_input_window: InputWindow::new("fast_run"),
             fast_run_string: String::new(),
             fast_run_result: None,
+
+            multiple_run_strings: vec![
+                (String::new(), None),
+                (String::new(), None),
+                (String::new(), None),
+                (String::new(), None),
+            ],
         }
     }
 
@@ -107,6 +119,46 @@ impl TopPanel {
                 self.contains_mouse = ui.ui_contains_pointer();
                 self.height = ui.max_rect().height();
             });
+
+            if let Mode::MultipleRun = self.mode {
+                egui::SidePanel::left("multiple_run").show(egui_ctx, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.with_layout(egui::Layout::left_to_right(), |ui| {
+                            ui.heading("Multiple Run");
+                        });
+                        ui.with_layout(egui::Layout::right_to_left(), |ui| {
+                            if ui.button("X").clicked() {
+                                self.mode = Mode::Edit;
+                            }
+                        });
+                    });
+
+                    ui.separator();
+
+                    // TODO: Allow the user to create more rows
+                    for (text, status) in self.multiple_run_strings.iter_mut() {
+                        ui.horizontal(|ui| {
+                            ui.add(egui::TextEdit::singleline(text));
+                            let label = match status {
+                                None => "⛶",
+                                Some(false) => "🗙",
+                                Some(true) => "✔",
+                            };
+                            ui.add(egui::Label::new(label));
+                        });
+                    }
+
+                    if ui.button("Run").clicked() {
+                        for (text, status) in self.multiple_run_strings.iter_mut() {
+                            *status = Some(fa.check_input(text));
+                        }
+                    }
+
+                    self.width = ui.max_rect().width();
+                });
+            } else {
+                self.width = 0.;
+            }
 
             let context_menu_command = self.context_menu(
                 egui_ctx,
@@ -165,12 +217,18 @@ impl TopPanel {
                     .resizable(false)
                     .collapsible(false)
                     .show(egui_ctx, |ui| {
-                        ui.label(format!("Result for string \"{}\": ", self.fast_run_string));
-                        if fast_run_result {
-                            ui.add(egui::widgets::Label::new("Accepted").text_color(ACCEPT_COLOR));
-                        } else {
-                            ui.add(egui::widgets::Label::new("Rejected").text_color(REJECT_COLOR));
-                        }
+                        ui.horizontal(|ui| {
+                            ui.label(format!("Result for string \"{}\": ", self.fast_run_string));
+                            if fast_run_result {
+                                ui.add(
+                                    egui::widgets::Label::new("Accepted").text_color(ACCEPT_COLOR),
+                                );
+                            } else {
+                                ui.add(
+                                    egui::widgets::Label::new("Rejected").text_color(REJECT_COLOR),
+                                );
+                            }
+                        });
                     });
                 if !result_open {
                     self.fast_run_result = None;
@@ -220,6 +278,13 @@ impl TopPanel {
                 if ui.button("Fast Run...").clicked() {
                     self.fast_run_input_window.open = true;
                 }
+
+                if ui.button("Multiple Run...").clicked() {
+                    for pair in self.multiple_run_strings.iter_mut() {
+                        pair.1 = None;
+                    }
+                    self.mode = Mode::MultipleRun;
+                }
             });
         });
 
@@ -250,24 +315,30 @@ impl TopPanel {
                 ui.horizontal(|ui| {
                     ui.set_min_height(CONFIGURATION_HEIGHT);
                     for configuration in configurations {
-                        let (fill, text_color, message) =
-                            if configuration.remaining_string.is_empty() {
-                                if fa.automaton.is_final(configuration.state()) {
-                                    (
-                                        Some(egui::Color32::from_rgb(122, 240, 98)),
-                                        egui::Color32::BLACK,
-                                        "accept",
-                                    )
-                                } else {
-                                    (Some(egui::Color32::RED), egui::Color32::WHITE, "reject")
-                                }
-                            } else {
+                        let config_exhausted = configuration.remaining_string.is_empty()
+                            && !fa
+                                .automaton
+                                .transitions_from(configuration.state())
+                                .into_iter()
+                                .any(|&transition| transition.symbol() == EMPTY_STRING);
+
+                        let (fill, text_color, message) = if config_exhausted {
+                            if fa.automaton.is_final(configuration.state()) {
                                 (
-                                    None,
-                                    egui::Color32::WHITE,
-                                    configuration.remaining_string.as_str(),
+                                    Some(egui::Color32::from_rgb(122, 240, 98)),
+                                    egui::Color32::BLACK,
+                                    "accept",
                                 )
-                            };
+                            } else {
+                                (Some(egui::Color32::RED), egui::Color32::WHITE, "reject")
+                            }
+                        } else {
+                            (
+                                None,
+                                egui::Color32::WHITE,
+                                configuration.remaining_string.as_str(),
+                            )
+                        };
 
                         let mut button = egui::Button::new(format!(
                             "{}\n{}",

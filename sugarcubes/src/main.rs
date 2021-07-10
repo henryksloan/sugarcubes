@@ -135,7 +135,7 @@ async fn main() {
 
         // Process keys, mouse etc.
         let screen_mouse_position = Vec2::from(mouse_position());
-        let mouse_position: Vec2 = screen_mouse_position - vec2(0., top_panel.height);
+        let mouse_position: Vec2 = screen_mouse_position - vec2(top_panel.width, top_panel.height);
 
         if let Mode::Edit = top_panel.mode {
             if !top_panel.contains_mouse && is_mouse_button_pressed(MouseButton::Left) {
@@ -194,7 +194,8 @@ async fn main() {
 
             if !top_panel.contains_mouse && is_mouse_button_pressed(MouseButton::Right) {
                 top_panel.open_context_menu = true;
-                top_panel.context_menu_pos = mouse_position + vec2(0., top_panel.height);
+                top_panel.context_menu_pos =
+                    mouse_position + vec2(top_panel.width, top_panel.height);
                 if let Some(state) = states.point_in_some_state(mouse_position, &fa) {
                     selected_state = Some(state);
                     dragging_selected = false;
@@ -240,7 +241,7 @@ async fn main() {
         }
 
         set_camera(&Camera2D::from_display_rect(Rect::new(
-            0.,
+            -top_panel.width,
             -top_panel.height,
             screen_width(),
             screen_height(),
@@ -317,7 +318,7 @@ async fn main() {
             root_ui().push_skin(&editbox_skin);
             widgets::Window::new(
                 hash!("win", editing_transition.2, editing_transition.3),
-                editing_transition.0 + vec2(0., top_panel.height),
+                editing_transition.0 + vec2(top_panel.width, top_panel.height),
                 transition_input_size,
             )
             .titlebar(false)

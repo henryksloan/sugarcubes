@@ -30,7 +30,17 @@ impl SimulateAutomaton for FiniteAutomaton {
         let (symbol, remaining) = if let Some((symbol, remaining)) = configuration.next_symbol() {
             (symbol, remaining)
         } else {
-            return Vec::new();
+            let mut new_configurations = Vec::new();
+            for transition in self.automaton.transitions_from(configuration.state()) {
+                let transition_symbol = transition.symbol();
+                if transition_symbol == EMPTY_STRING {
+                    new_configurations.push(FiniteAutomatonConfiguration::new(
+                        transition.to(),
+                        configuration.remaining_string.clone(),
+                    ));
+                }
+            }
+            return new_configurations;
         };
 
         let mut new_configurations = Vec::new();
