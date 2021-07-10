@@ -99,63 +99,14 @@ impl TopPanel {
                 .insert(egui::TextStyle::Body, (egui::FontFamily::Proportional, 19.));
             egui_ctx.set_fonts(fonts);
 
-            egui::TopBottomPanel::top("top_panel").show(egui_ctx, |ui| {
-                let menu_bar_command = self.menu_bar(ui, can_undo, can_redo);
-
-                if let Some(menu_bar_command) = menu_bar_command {
-                    command = Some(menu_bar_command);
-                }
-
-                if let Mode::Simulate = self.mode {
-                    ui.separator();
-                    let simulation_toolbar_command =
-                        self.simulation_toolbar(ui, fa, configurations);
-
-                    if let Some(simulation_toolbar_command) = simulation_toolbar_command {
-                        command = Some(simulation_toolbar_command);
-                    }
-                }
-
-                self.contains_mouse = ui.ui_contains_pointer();
-                self.height = ui.max_rect().height();
-            });
+            let top_panel_command =
+                self.top_panel(egui_ctx, fa, configurations, can_undo, can_redo);
+            if let Some(top_panel_command) = top_panel_command {
+                command = Some(top_panel_command);
+            }
 
             if let Mode::MultipleRun = self.mode {
-                egui::SidePanel::left("multiple_run").show(egui_ctx, |ui| {
-                    ui.horizontal(|ui| {
-                        ui.with_layout(egui::Layout::left_to_right(), |ui| {
-                            ui.heading("Multiple Run");
-                        });
-                        ui.with_layout(egui::Layout::right_to_left(), |ui| {
-                            if ui.button("X").clicked() {
-                                self.mode = Mode::Edit;
-                            }
-                        });
-                    });
-
-                    ui.separator();
-
-                    // TODO: Allow the user to create more rows
-                    for (text, status) in self.multiple_run_strings.iter_mut() {
-                        ui.horizontal(|ui| {
-                            ui.add(egui::TextEdit::singleline(text));
-                            let label = match status {
-                                None => "⛶",
-                                Some(false) => "🗙",
-                                Some(true) => "✔",
-                            };
-                            ui.add(egui::Label::new(label));
-                        });
-                    }
-
-                    if ui.button("Run").clicked() {
-                        for (text, status) in self.multiple_run_strings.iter_mut() {
-                            *status = Some(fa.check_input(text));
-                        }
-                    }
-
-                    self.width = ui.max_rect().width();
-                });
+                self.left_panel(egui_ctx, fa);
             } else {
                 self.width = 0.;
             }
@@ -174,66 +125,51 @@ impl TopPanel {
             }
 
             if self.simulate_input_window.open {
-                let mut new_configurations = None;
-                let (hit_ok, contains_mouse) = self.simulate_input_window.show(egui_ctx);
-                self.contains_mouse |= contains_mouse;
-
-                if hit_ok {
-                    new_configurations =
-                        Some(fa.initial_configurations(&self.simulate_input_window.input));
-                    self.mode = Mode::Simulate;
-                    self.string_simulating = self.simulate_input_window.input.clone();
-                    self.simulate_input_window.open = false;
-                }
-
-                if let Some(new_configurations) = new_configurations {
-                    command = Some(TopPanelCommand::StartSimulation(new_configurations));
-                }
-
-                if !self.simulate_input_window.open {
-                    self.simulate_input_window.input.clear();
+                let simulate_input_command = self.show_simulate_input_window(egui_ctx, fa);
+                if let Some(simulate_input_command) = simulate_input_command {
+                    command = Some(simulate_input_command);
                 }
             }
 
             if self.fast_run_input_window.open {
-                let (hit_ok, contains_mouse) = self.fast_run_input_window.show(egui_ctx);
-                self.contains_mouse |= contains_mouse;
-
-                if hit_ok {
-                    self.fast_run_input_window.open = false;
-                    self.fast_run_string = self.fast_run_input_window.input.clone();
-                    self.fast_run_result = Some(fa.check_input(&self.fast_run_input_window.input));
-                }
-
-                if !self.fast_run_input_window.open {
-                    self.fast_run_input_window.input.clear();
-                }
+                self.show_fast_run_input_window(egui_ctx, fa);
             }
 
             if let Some(fast_run_result) = self.fast_run_result {
-                let mut result_open = self.fast_run_result.is_some();
-                egui::Window::new("Fast Run Result")
-                    .open(&mut result_open)
-                    .resizable(false)
-                    .collapsible(false)
-                    .show(egui_ctx, |ui| {
-                        ui.horizontal(|ui| {
-                            ui.label(format!("Result for string \"{}\": ", self.fast_run_string));
-                            if fast_run_result {
-                                ui.add(
-                                    egui::widgets::Label::new("Accepted").text_color(ACCEPT_COLOR),
-                                );
-                            } else {
-                                ui.add(
-                                    egui::widgets::Label::new("Rejected").text_color(REJECT_COLOR),
-                                );
-                            }
-                        });
-                    });
-                if !result_open {
-                    self.fast_run_result = None;
+                self.show_fast_run_result_window(egui_ctx, fast_run_result);
+            }
+        });
+
+        command
+    }
+
+    fn top_panel(
+        &mut self,
+        egui_ctx: &egui::CtxRef,
+        fa: &FiniteAutomaton,
+        configurations: &mut Vec<FiniteAutomatonConfiguration>,
+        can_undo: bool,
+        can_redo: bool,
+    ) -> Option<TopPanelCommand> {
+        let mut command = None;
+
+        egui::TopBottomPanel::top("top_panel").show(egui_ctx, |ui| {
+            let menu_bar_command = self.menu_bar(ui, can_undo, can_redo);
+            if let Some(menu_bar_command) = menu_bar_command {
+                command = Some(menu_bar_command);
+            }
+
+            if let Mode::Simulate = self.mode {
+                ui.separator();
+
+                let simulation_toolbar_command = self.simulation_toolbar(ui, fa, configurations);
+                if let Some(simulation_toolbar_command) = simulation_toolbar_command {
+                    command = Some(simulation_toolbar_command);
                 }
             }
+
+            self.contains_mouse = ui.ui_contains_pointer();
+            self.height = ui.max_rect().height();
         });
 
         command
@@ -255,17 +191,13 @@ impl TopPanel {
             });
 
             egui::menu::menu(ui, "Edit", |ui| {
-                if ui
-                    .add(egui::widgets::Button::new("Undo").enabled(can_undo))
-                    .clicked()
-                {
+                let undo_button = egui::widgets::Button::new("Undo").enabled(can_undo);
+                if ui.add(undo_button).clicked() {
                     command = Some(TopPanelCommand::Undo);
                 }
 
-                if ui
-                    .add(egui::widgets::Button::new("Redo").enabled(can_redo))
-                    .clicked()
-                {
+                let redo_button = egui::widgets::Button::new("Redo").enabled(can_redo);
+                if ui.add(redo_button).clicked() {
                     command = Some(TopPanelCommand::Redo);
                 }
             });
@@ -373,6 +305,109 @@ impl TopPanel {
         });
 
         command
+    }
+
+    fn left_panel(&mut self, egui_ctx: &egui::CtxRef, fa: &FiniteAutomaton) {
+        egui::SidePanel::left("multiple_run").show(egui_ctx, |ui| {
+            ui.horizontal(|ui| {
+                ui.with_layout(egui::Layout::left_to_right(), |ui| {
+                    ui.heading("Multiple Run");
+                });
+                ui.with_layout(egui::Layout::right_to_left(), |ui| {
+                    if ui.button("X").clicked() {
+                        self.mode = Mode::Edit;
+                    }
+                });
+            });
+
+            ui.separator();
+
+            // TODO: Allow the user to create more rows
+            for (text, status) in self.multiple_run_strings.iter_mut() {
+                ui.horizontal(|ui| {
+                    ui.add(egui::TextEdit::singleline(text));
+                    let label = match status {
+                        None => "⛶",
+                        Some(false) => "🗙",
+                        Some(true) => "✔",
+                    };
+                    ui.add(egui::Label::new(label));
+                });
+            }
+
+            if ui.button("Run").clicked() {
+                for (text, status) in self.multiple_run_strings.iter_mut() {
+                    *status = Some(fa.check_input(text));
+                }
+            }
+
+            self.width = ui.max_rect().width();
+        });
+    }
+
+    fn show_simulate_input_window(
+        &mut self,
+        egui_ctx: &egui::CtxRef,
+        fa: &FiniteAutomaton,
+    ) -> Option<TopPanelCommand> {
+        let mut command = None;
+
+        let mut new_configurations = None;
+        let (hit_ok, contains_mouse) = self.simulate_input_window.show(egui_ctx);
+        self.contains_mouse |= contains_mouse;
+
+        if hit_ok {
+            new_configurations = Some(fa.initial_configurations(&self.simulate_input_window.input));
+            self.mode = Mode::Simulate;
+            self.string_simulating = self.simulate_input_window.input.clone();
+            self.simulate_input_window.open = false;
+        }
+
+        if let Some(new_configurations) = new_configurations {
+            command = Some(TopPanelCommand::StartSimulation(new_configurations));
+        }
+
+        if !self.simulate_input_window.open {
+            self.simulate_input_window.input.clear();
+        }
+
+        command
+    }
+
+    fn show_fast_run_input_window(&mut self, egui_ctx: &egui::CtxRef, fa: &FiniteAutomaton) {
+        let (hit_ok, contains_mouse) = self.fast_run_input_window.show(egui_ctx);
+        self.contains_mouse |= contains_mouse;
+
+        if hit_ok {
+            self.fast_run_input_window.open = false;
+            self.fast_run_string = self.fast_run_input_window.input.clone();
+            self.fast_run_result = Some(fa.check_input(&self.fast_run_input_window.input));
+        }
+
+        if !self.fast_run_input_window.open {
+            self.fast_run_input_window.input.clear();
+        }
+    }
+
+    fn show_fast_run_result_window(&mut self, egui_ctx: &egui::CtxRef, fast_run_result: bool) {
+        let mut result_open = true;
+        egui::Window::new("Fast Run Result")
+            .open(&mut result_open)
+            .resizable(false)
+            .collapsible(false)
+            .show(egui_ctx, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label(format!("Result for string \"{}\": ", self.fast_run_string));
+                    if fast_run_result {
+                        ui.add(egui::widgets::Label::new("Accepted").text_color(ACCEPT_COLOR));
+                    } else {
+                        ui.add(egui::widgets::Label::new("Rejected").text_color(REJECT_COLOR));
+                    }
+                });
+            });
+        if !result_open {
+            self.fast_run_result = None;
+        }
     }
 
     fn context_menu(
