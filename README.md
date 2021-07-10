@@ -39,12 +39,10 @@ Sugarcubes is in a very early stage of development, having only basic support fo
     * Multiple select mode
         * Click-drag starting on the background
         * Movement and deletion of multiple objects
-* Improved simulation mode
-    * Rewind button (this may require some sophistication to avoid combinatoric memory usage)
+* Simulation rewinding (this may require some sophistication to avoid combinatoric memory usage)
 * Saving
     * Investigate starting out with JFLAP-compatibility or a custom file format
-* Multiple run mode
-    * Eventually support loading input files
+* Support loading input files for multiple run simulation
 * Under consideration
     * Implement undo/redo for moving
     * Editing transitions with the context menu

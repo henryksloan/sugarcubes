@@ -135,6 +135,7 @@ impl TopPanel {
 
                     ui.separator();
 
+                    // TODO: Allow the user to create more rows
                     for (text, status) in self.multiple_run_strings.iter_mut() {
                         ui.horizontal(|ui| {
                             ui.add(egui::TextEdit::singleline(text));
