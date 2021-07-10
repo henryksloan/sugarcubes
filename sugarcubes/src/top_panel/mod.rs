@@ -469,23 +469,14 @@ impl TopPanel {
                                         ui.separator();
 
                                         if ui.button("Delete").clicked() {
-                                            let transitions = {
-                                                let transitions_from = fa
-                                                    .automaton
-                                                    .transitions_from(selected)
-                                                    .into_iter()
-                                                    .cloned();
-                                                let transitions_to = fa
-                                                    .automaton
-                                                    .transitions_to(selected)
-                                                    .into_iter()
-                                                    .cloned();
-                                                transitions_from.chain(transitions_to).collect()
-                                            };
                                             command = Some(Command::DeleteState(
                                                 selected,
                                                 states.get_position(selected).clone(),
-                                                transitions,
+                                                fa.automaton
+                                                    .transitions_with(selected)
+                                                    .into_iter()
+                                                    .cloned()
+                                                    .collect(),
                                             ));
                                             *selected_state = None;
                                             ui.memory().close_popup();
