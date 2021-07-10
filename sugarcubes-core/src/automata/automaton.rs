@@ -66,6 +66,10 @@ impl<T: Transition> Automaton<T> {
         self.transitions.to(to)
     }
 
+    pub fn transitions_with(&self, state: u32) -> Vec<&T> {
+        self.transitions.with(state)
+    }
+
     pub fn states_have_loop(&self, state0: u32, state1: u32) -> bool {
         self.transitions.states_have_loop(state0, state1)
     }

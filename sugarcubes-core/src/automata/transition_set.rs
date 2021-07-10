@@ -106,6 +106,13 @@ impl<T: Transition> TransitionSet<T> {
             .collect()
     }
 
+    pub fn with(&self, state: u32) -> Vec<&T> {
+        self.keys_with(state)
+            .iter()
+            .map(|&key| self.transitions.get(*key).unwrap())
+            .collect()
+    }
+
     fn keys_from(&self, from: u32) -> &HashSet<DefaultKey> {
         self.transitions_from
             .get(&from)
@@ -116,6 +123,10 @@ impl<T: Transition> TransitionSet<T> {
         self.transitions_to
             .get(&to)
             .expect("no transitions_to for state")
+    }
+
+    fn keys_with(&self, state: u32) -> HashSet<&DefaultKey> {
+        self.keys_to(state).union(&self.keys_from(state)).collect()
     }
 
     fn has_transition(&self, transition: &T) -> bool {
