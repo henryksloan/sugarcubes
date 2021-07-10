@@ -30,7 +30,7 @@ cargo build --release --target wasm32-unknown-unknown
 This will produce a WASM binary in `target/wasm32-unknown-unknown/release/sugarcubes.wasm`, which can be placed in the `docs` directory and hosted as described [in the miniquad docs](https://github.com/not-fl3/miniquad/#wasm).
 
 # Progress
-Sugarcubes is in a very early stage of development, having only basic support for editing and simulating finite automata. The first MVP should be a fully usable finite automaton simulator and editor.
+Sugarcubes is in an early stage of development, having support for editing and simulating finite automata. The first MVP will be a fully usable finite automaton simulator and editor.
 
 ## Next steps
 * Usable FA edit mode
@@ -40,8 +40,7 @@ Sugarcubes is in a very early stage of development, having only basic support fo
         * Click-drag starting on the background
         * Movement and deletion of multiple objects
 * Simulation rewinding (this may require some sophistication to avoid combinatoric memory usage)
-* Saving
-    * Investigate starting out with JFLAP-compatibility or a custom file format
+* Saving (initially, either JFLAP-compatible or a custom file format)
 * Support loading input files for multiple run simulation
 * Under consideration
     * Implement undo/redo for moving
