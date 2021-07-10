@@ -18,6 +18,7 @@ pub const REJECT_COLOR: egui::Color32 = egui::Color32::RED;
 pub enum Mode {
     Edit,
     Simulate,
+    MultipleRun,
 }
 
 pub enum TopPanelCommand {
@@ -119,40 +120,44 @@ impl TopPanel {
                 self.height = ui.max_rect().height();
             });
 
-            egui::SidePanel::left("multiple_run").show(egui_ctx, |ui| {
-                ui.horizontal(|ui| {
-                    ui.with_layout(egui::Layout::left_to_right(), |ui| {
-                        ui.heading("Multiple Run");
-                    });
-                    ui.with_layout(egui::Layout::right_to_left(), |ui| {
-                        if ui.button("X").clicked() {
-                            self.mode = Mode::Edit;
-                        }
-                    });
-                });
-
-                ui.separator();
-
-                for (text, status) in self.multiple_run_strings.iter_mut() {
+            if let Mode::MultipleRun = self.mode {
+                egui::SidePanel::left("multiple_run").show(egui_ctx, |ui| {
                     ui.horizontal(|ui| {
-                        ui.add(egui::TextEdit::singleline(text));
-                        let label = match status {
-                            None => "⛶",
-                            Some(false) => "🗙",
-                            Some(true) => "✔",
-                        };
-                        ui.add(egui::Label::new(label));
+                        ui.with_layout(egui::Layout::left_to_right(), |ui| {
+                            ui.heading("Multiple Run");
+                        });
+                        ui.with_layout(egui::Layout::right_to_left(), |ui| {
+                            if ui.button("X").clicked() {
+                                self.mode = Mode::Edit;
+                            }
+                        });
                     });
-                }
 
-                if ui.button("Run").clicked() {
+                    ui.separator();
+
                     for (text, status) in self.multiple_run_strings.iter_mut() {
-                        *status = Some(fa.check_input(text));
+                        ui.horizontal(|ui| {
+                            ui.add(egui::TextEdit::singleline(text));
+                            let label = match status {
+                                None => "⛶",
+                                Some(false) => "🗙",
+                                Some(true) => "✔",
+                            };
+                            ui.add(egui::Label::new(label));
+                        });
                     }
-                }
 
-                self.width = ui.max_rect().width();
-            });
+                    if ui.button("Run").clicked() {
+                        for (text, status) in self.multiple_run_strings.iter_mut() {
+                            *status = Some(fa.check_input(text));
+                        }
+                    }
+
+                    self.width = ui.max_rect().width();
+                });
+            } else {
+                self.width = 0.;
+            }
 
             let context_menu_command = self.context_menu(
                 egui_ctx,
@@ -271,6 +276,13 @@ impl TopPanel {
 
                 if ui.button("Fast Run...").clicked() {
                     self.fast_run_input_window.open = true;
+                }
+
+                if ui.button("Multiple Run...").clicked() {
+                    for pair in self.multiple_run_strings.iter_mut() {
+                        pair.1 = None;
+                    }
+                    self.mode = Mode::MultipleRun;
                 }
             });
         });
