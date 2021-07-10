@@ -120,6 +120,19 @@ impl TopPanel {
             });
 
             egui::SidePanel::left("multiple_run").show(egui_ctx, |ui| {
+                ui.horizontal(|ui| {
+                    ui.with_layout(egui::Layout::left_to_right(), |ui| {
+                        ui.heading("Multiple Run");
+                    });
+                    ui.with_layout(egui::Layout::right_to_left(), |ui| {
+                        if ui.button("X").clicked() {
+                            self.mode = Mode::Edit;
+                        }
+                    });
+                });
+
+                ui.separator();
+
                 for (text, status) in self.multiple_run_strings.iter_mut() {
                     ui.horizontal(|ui| {
                         ui.add(egui::TextEdit::singleline(text));
