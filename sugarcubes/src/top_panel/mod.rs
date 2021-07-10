@@ -6,7 +6,7 @@ use crate::{command::*, states::*};
 
 use sugarcubes_core::automata::{
     finite_automaton::{FiniteAutomaton, FiniteAutomatonConfiguration, FiniteAutomatonTransition},
-    Configuration, SimulateAutomaton,
+    Configuration, SimulateAutomaton, EMPTY_STRING,
 };
 
 use macroquad::prelude::*;
@@ -314,24 +314,30 @@ impl TopPanel {
                 ui.horizontal(|ui| {
                     ui.set_min_height(CONFIGURATION_HEIGHT);
                     for configuration in configurations {
-                        let (fill, text_color, message) =
-                            if configuration.remaining_string.is_empty() {
-                                if fa.automaton.is_final(configuration.state()) {
-                                    (
-                                        Some(egui::Color32::from_rgb(122, 240, 98)),
-                                        egui::Color32::BLACK,
-                                        "accept",
-                                    )
-                                } else {
-                                    (Some(egui::Color32::RED), egui::Color32::WHITE, "reject")
-                                }
-                            } else {
+                        let config_exhausted = configuration.remaining_string.is_empty()
+                            && !fa
+                                .automaton
+                                .transitions_from(configuration.state())
+                                .into_iter()
+                                .any(|&transition| transition.symbol() == EMPTY_STRING);
+
+                        let (fill, text_color, message) = if config_exhausted {
+                            if fa.automaton.is_final(configuration.state()) {
                                 (
-                                    None,
-                                    egui::Color32::WHITE,
-                                    configuration.remaining_string.as_str(),
+                                    Some(egui::Color32::from_rgb(122, 240, 98)),
+                                    egui::Color32::BLACK,
+                                    "accept",
                                 )
-                            };
+                            } else {
+                                (Some(egui::Color32::RED), egui::Color32::WHITE, "reject")
+                            }
+                        } else {
+                            (
+                                None,
+                                egui::Color32::WHITE,
+                                configuration.remaining_string.as_str(),
+                            )
+                        };
 
                         let mut button = egui::Button::new(format!(
                             "{}\n{}",
