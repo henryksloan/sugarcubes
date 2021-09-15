@@ -45,6 +45,7 @@ pub struct TopPanel {
     fast_run_result: Option<bool>,
 
     multiple_run_strings: Vec<(String, Option<bool>)>,
+    multiple_run_selected_index: Option<usize>,
 }
 
 impl TopPanel {
@@ -70,6 +71,7 @@ impl TopPanel {
                 (String::new(), None),
                 (String::new(), None),
             ],
+            multiple_run_selected_index: None,
         }
     }
 
@@ -216,6 +218,7 @@ impl TopPanel {
                         pair.1 = None;
                     }
                     self.mode = Mode::MultipleRun;
+                    self.multiple_run_selected_index = None;
                 }
             });
         });
@@ -322,10 +325,34 @@ impl TopPanel {
 
             ui.separator();
 
-            // TODO: Allow the user to create more rows
-            for (text, status) in self.multiple_run_strings.iter_mut() {
+            let selected_index = self.multiple_run_selected_index;
+            let mut add_new_line = false;
+            let mut new_selected_index = selected_index;
+            let num_strings = self.multiple_run_strings.len();
+            for (i, (text, status)) in self.multiple_run_strings.iter_mut().enumerate() {
                 ui.horizontal(|ui| {
-                    ui.add(egui::TextEdit::singleline(text));
+                    let text_edit = ui.add(egui::TextEdit::singleline(text));
+
+                    if text_edit.lost_focus() {
+                        if ui.input().key_pressed(egui::Key::Enter) {
+                            if i == num_strings - 1 && !text.is_empty() {
+                                add_new_line = true;
+                                new_selected_index = Some(i + 1);
+                            } else {
+                                new_selected_index = Some((i + 1) % num_strings);
+                            }
+                        } else {
+                            new_selected_index = None;
+                        }
+                    }
+
+                    if let Some(selected_index) = selected_index {
+                        // If this index is selected, and hasn't been clicked off of
+                        if selected_index == i && new_selected_index.is_some() {
+                            text_edit.request_focus();
+                        }
+                    }
+
                     let label = match status {
                         None => "⛶",
                         Some(false) => "🗙",
@@ -333,6 +360,14 @@ impl TopPanel {
                     };
                     ui.add(egui::Label::new(label));
                 });
+            }
+
+            self.multiple_run_selected_index = new_selected_index;
+
+            // "Enter" was pressed on the last TextEdit, and it was empty
+            // if focus_next && !text_empty {
+            if add_new_line {
+                self.multiple_run_strings.push((String::new(), None));
             }
 
             if ui.button("Run").clicked() {
