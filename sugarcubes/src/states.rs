@@ -143,7 +143,7 @@ impl States {
         &mut self,
         fa: &FiniteAutomaton,
         is_simulating: bool,
-        configurations: &Vec<FiniteAutomatonConfiguration>,
+        configurations: &[FiniteAutomatonConfiguration],
         selected_state: Option<u32>,
         font: &Font,
     ) {

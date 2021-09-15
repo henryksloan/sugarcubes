@@ -94,6 +94,6 @@ impl SimulateAutomaton for FiniteAutomaton {
             configurations = self.step_all(configurations);
         }
 
-        return false;
+        false
     }
 }

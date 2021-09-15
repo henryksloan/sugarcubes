@@ -23,12 +23,12 @@ impl<T: Transition> Automaton<T> {
     /// Add a state with a given ID, failing if the ID is taken,
     /// and returning whether it succeeded
     pub fn try_add_state_with_id(&mut self, id: u32) -> bool {
-        if self.states.contains_key(&id) {
-            false
-        } else {
-            self.states.insert(id, State {});
+        if let btree_map::Entry::Vacant(entry) = self.states.entry(id) {
+            entry.insert(State {});
             self.transitions.register_state(id);
             true
+        } else {
+            false
         }
     }
 
@@ -46,7 +46,7 @@ impl<T: Transition> Automaton<T> {
     /// Generate an ID by finding the first unused ordinal
     pub fn get_next_state_id(&mut self) -> u32 {
         let used_ids: HashSet<u32> = self.states.keys().cloned().collect();
-        (0..).filter(|id| !used_ids.contains(id)).next().unwrap()
+        (0..).find(|id| !used_ids.contains(id)).unwrap()
     }
 
     pub fn states(&self) -> Vec<&u32> {

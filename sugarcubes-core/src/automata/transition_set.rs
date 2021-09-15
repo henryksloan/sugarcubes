@@ -60,7 +60,7 @@ impl<T: Transition> TransitionSet<T> {
         for key in &transitions_from {
             if let Some(transition) = self.transitions.get(*key) {
                 if let Some(transitions_to) = self.transitions_to.get_mut(&transition.to()) {
-                    transitions_to.remove(&key);
+                    transitions_to.remove(key);
                 }
             }
         }
@@ -68,7 +68,7 @@ impl<T: Transition> TransitionSet<T> {
         for key in &transitions_to {
             if let Some(transition) = self.transitions.get(*key) {
                 if let Some(transitions_from) = self.transitions_from.get_mut(&transition.from()) {
-                    transitions_from.remove(&key);
+                    transitions_from.remove(key);
                 }
             }
         }
@@ -126,13 +126,13 @@ impl<T: Transition> TransitionSet<T> {
     }
 
     fn keys_with(&self, state: u32) -> HashSet<&DefaultKey> {
-        self.keys_to(state).union(&self.keys_from(state)).collect()
+        self.keys_to(state).union(self.keys_from(state)).collect()
     }
 
     fn has_transition(&self, transition: &T) -> bool {
         if let Some(set_from) = self.transitions_from.get(&transition.from()) {
             set_from
-                .into_iter()
+                .iter()
                 .any(|key| *self.transitions.get(*key).unwrap() == *transition)
         } else {
             false

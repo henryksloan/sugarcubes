@@ -24,10 +24,6 @@ impl FiniteAutomatonConfiguration {
     /// Returns the next symbol and the string remaining after it, or None if there is no next symbol
     pub fn next_symbol(&mut self) -> Option<(char, String)> {
         let mut chars = self.remaining_string.chars();
-        if let Some(next) = chars.next() {
-            Some((next, chars.collect()))
-        } else {
-            None
-        }
+        chars.next().map(|next| (next, chars.collect()))
     }
 }

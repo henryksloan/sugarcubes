@@ -160,12 +160,10 @@ async fn main() {
                         state_drag_offset = Vec2::ZERO;
                         dragging_selected = true;
                     }
-                } else {
-                    if let Some(state) = states.point_in_some_state(mouse_position, &fa) {
-                        selected_state = Some(state);
-                        state_drag_offset = *states.get_position(state) - mouse_position;
-                        dragging_selected = true;
-                    }
+                } else if let Some(state) = states.point_in_some_state(mouse_position, &fa) {
+                    selected_state = Some(state);
+                    state_drag_offset = *states.get_position(state) - mouse_position;
+                    dragging_selected = true;
                 }
 
                 last_click_time = new_click_time;
@@ -292,7 +290,7 @@ async fn main() {
                         selected_transition = Some(FiniteAutomatonTransition::new(
                             *state,
                             other_state,
-                            symbols[i].chars().next().unwrap_or(EMPTY_STRING).clone(),
+                            symbols[i].chars().next().unwrap_or(EMPTY_STRING),
                         ));
                         selected_state = None;
                     }

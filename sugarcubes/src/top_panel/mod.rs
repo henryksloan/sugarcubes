@@ -471,7 +471,7 @@ impl TopPanel {
                                         if ui.button("Delete").clicked() {
                                             command = Some(Command::DeleteState(
                                                 selected,
-                                                states.get_position(selected).clone(),
+                                                *states.get_position(selected),
                                                 fa.automaton
                                                     .transitions_with(selected)
                                                     .into_iter()
