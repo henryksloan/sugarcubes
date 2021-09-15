@@ -374,6 +374,14 @@ impl TopPanel {
                 for (text, status) in self.multiple_run_strings.iter_mut() {
                     *status = Some(fa.check_input(text));
                 }
+
+                // If the last string is empty, discard the result,
+                // as it is most likely just an extra blank line, not a user's query
+                if let Some(mut last_string) = self.multiple_run_strings.last_mut() {
+                    if last_string.0.is_empty() {
+                        last_string.1 = None;
+                    }
+                }
             }
 
             self.width = ui.max_rect().width();
