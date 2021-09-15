@@ -44,8 +44,8 @@ impl InputWindow {
             self.open = false;
         }
 
-        if let Some(response) = response {
-            contains_mouse |= response.hovered();
+        if let Some(inner_response) = response {
+            contains_mouse |= inner_response.response.hovered();
         }
 
         (hit_ok, contains_mouse)
