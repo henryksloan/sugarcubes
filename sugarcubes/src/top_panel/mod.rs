@@ -11,6 +11,19 @@ use sugarcubes_core::automata::{
 
 use macroquad::prelude::*;
 
+extern "C" {
+    fn hi_from_js();
+    fn perform_demo();
+}
+
+#[no_mangle]
+extern "C" fn hi_from_rust() {
+    // we can call JS from rust!
+    unsafe {
+        hi_from_js();
+    }
+}
+
 const CONFIGURATION_HEIGHT: f32 = 60.;
 pub const ACCEPT_COLOR: egui::Color32 = egui::Color32::from_rgb(122, 240, 98);
 pub const REJECT_COLOR: egui::Color32 = egui::Color32::RED;
@@ -188,7 +201,9 @@ impl TopPanel {
         egui::menu::bar(ui, |ui| {
             egui::menu::menu(ui, "File", |ui| {
                 if ui.button("Open...").clicked() {
-                    // ...
+                    unsafe {
+                        perform_demo();
+                    }
                 }
             });
 
