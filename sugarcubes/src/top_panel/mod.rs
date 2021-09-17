@@ -10,6 +10,18 @@ use sugarcubes_core::automata::{
 };
 
 use macroquad::prelude::*;
+use wasm_bindgen::prelude::*;
+
+#[wasm_bindgen]
+extern "C" {
+    fn perform_demo();
+}
+
+// #[wasm_bindgen]
+#[no_mangle]
+extern "C" fn add(x: i32, y: i32) -> i32 {
+    x + y
+}
 
 const CONFIGURATION_HEIGHT: f32 = 60.;
 pub const ACCEPT_COLOR: egui::Color32 = egui::Color32::from_rgb(122, 240, 98);
@@ -188,7 +200,9 @@ impl TopPanel {
         egui::menu::bar(ui, |ui| {
             egui::menu::menu(ui, "File", |ui| {
                 if ui.button("Open...").clicked() {
-                    // ...
+                    unsafe {
+                        perform_demo();
+                    }
                 }
             });
 
