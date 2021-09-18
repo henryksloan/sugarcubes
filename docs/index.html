@@ -25,36 +25,47 @@
     <canvas id="glcanvas" tabindex='1'></canvas>
     <!-- Minified and statically hosted version of https://github.com/not-fl3/macroquad/blob/master/js/mq_js_bundle.js -->
     <script src="https://not-fl3.github.io/miniquad-samples/mq_js_bundle.js"></script>
-    <script src="sapp_jsutils.js"></script>
+    <!-- script src="sapp_jsutils.js"></script -->
+    <script src="https://not-fl3.github.io/miniquad-samples/sapp_jsutils.js"></script>
     <script src="quad-url.js"></script>
     <script>
-      function perform_demo() {
-          const element = document.createElement("input");
-          element.type = "file";
-          element.style.display = "none";
-          // element.accept = acceptedEextensions;
+        async function perform_demo() {
+            function promise_file() {
+                const element = document.createElement("input");
+                element.type = "file";
+                element.style.display = "none";
+                // element.accept = acceptedEextensions;
 
-          element.addEventListener(
-              "change",
-              async () => {
-                  if (!element.files || !element.files.length) return;
-                  const file = element.files[0];
-                  const filename = file.name;
-                  const content = await file.text();
+                return new Promise(function (resolve, reject) {
+                    element.addEventListener(
+                        "change",
+                        async () => {
+                            if (!element.files || !element.files.length) return;
+                            const file = element.files[0];
+                            const filename = file.name;
+                            const content = await file.text();
 
-                  console.log(filename, content);
-              },
-              { capture: false, once: true }
-          );
+                            console.log(filename, content);
+                            resolve(filename);
+                        },
+                        { capture: false, once: true }
+                    );
+                    element.click();
+                });
+            }
 
-          element.click();
-      };
+            // return await promise_file();
+            await promise_file();
+            return 5;
+        };
 
         register_plugin = function (importObject) {
             importObject.env.hi_from_js = function (js_object) {
                 console.log("hi")
             }
-            importObject.env.perform_demo = perform_demo
+            importObject.env.perform_demo = perform_demo;
+                    importObject.env.console_log = function (js_object) {
+                                console.log("yo, ", js_object);}
         }
 
         document.onclick = function () {

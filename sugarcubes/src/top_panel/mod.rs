@@ -10,10 +10,12 @@ use sugarcubes_core::automata::{
 };
 
 use macroquad::prelude::*;
+use sapp_jsutils::JsObject;
 
 extern "C" {
+    fn console_log(js_object: JsObject);
     fn hi_from_js();
-    fn perform_demo();
+    fn perform_demo() -> JsObject;
 }
 
 #[no_mangle]
@@ -202,7 +204,8 @@ impl TopPanel {
             egui::menu::menu(ui, "File", |ui| {
                 if ui.button("Open...").clicked() {
                     unsafe {
-                        perform_demo();
+                        console_log(perform_demo());
+                        console_log(JsObject::string("hi from rust!"));
                     }
                 }
             });

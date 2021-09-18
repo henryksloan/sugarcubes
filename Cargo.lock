@@ -1305,6 +1305,7 @@ dependencies = [
  "egui-macroquad",
  "glam",
  "macroquad",
+ "sapp-jsutils",
  "sugarcubes-core",
 ]
 
