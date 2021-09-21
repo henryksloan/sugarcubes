@@ -15,6 +15,15 @@ const CONFIGURATION_HEIGHT: f32 = 60.;
 pub const ACCEPT_COLOR: egui::Color32 = egui::Color32::from_rgb(122, 240, 98);
 pub const REJECT_COLOR: egui::Color32 = egui::Color32::RED;
 
+#[cfg(target_arch = "wasm32")]
+extern "C" {
+    fn perform_demo();
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn perform_demo() {}
+
+#[derive(Copy, Clone)]
 pub enum Mode {
     Edit,
     Simulate,
@@ -44,7 +53,7 @@ pub struct TopPanel {
     fast_run_string: String,
     fast_run_result: Option<bool>,
 
-    multiple_run_strings: Vec<(String, Option<bool>)>,
+    pub multiple_run_strings: Vec<(String, Option<bool>)>,
     multiple_run_selected_index: Option<usize>,
 }
 
@@ -65,12 +74,7 @@ impl TopPanel {
             fast_run_string: String::new(),
             fast_run_result: None,
 
-            multiple_run_strings: vec![
-                (String::new(), None),
-                (String::new(), None),
-                (String::new(), None),
-                (String::new(), None),
-            ],
+            multiple_run_strings: vec![(String::new(), None)],
             multiple_run_selected_index: None,
         }
     }
@@ -188,7 +192,7 @@ impl TopPanel {
         egui::menu::bar(ui, |ui| {
             egui::menu::menu(ui, "File", |ui| {
                 if ui.button("Open...").clicked() {
-                    // ...
+                    perform_demo();
                 }
             });
 
