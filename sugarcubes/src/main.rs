@@ -12,6 +12,9 @@ use sugarcubes_core::automata::{
 
 use macroquad::prelude::*;
 use macroquad::ui::{hash, root_ui, widgets, Skin};
+use sapp_jsutils::JsObject;
+
+use std::cell::RefCell;
 use std::collections::HashMap;
 
 const DOUBLE_CLICK_DELAY: f64 = 0.25;
@@ -52,10 +55,30 @@ fn redo(
     }
 }
 
+extern "C" {
+    fn console_log(js_object: JsObject);
+}
+
+#[no_mangle]
+extern "C" fn open_file(filename: JsObject) {
+    unsafe {
+        console_log(JsObject::string("Opened: "));
+        let mut s = String::new();
+        filename.to_string(&mut s);
+        console_log(filename);
+        TOP_PANEL.with(|state| {
+            state
+                .try_borrow_mut()
+                .ok()
+                .map(|mut state| state.multiple_run_strings.push((s, None)))
+        });
+    }
+}
+
+thread_local! { pub static TOP_PANEL: RefCell<TopPanel> = RefCell::new(TopPanel::new()); }
+
 #[macroquad::main("Sugarcubes")]
 async fn main() {
-    let mut top_panel = TopPanel::new();
-
     let transition_input_size = vec2(150., 36.);
 
     let editbox_skin = {
@@ -133,12 +156,23 @@ async fn main() {
     loop {
         clear_background(WHITE);
 
+        // Copy state from the top panel
+        let (top_panel_width, top_panel_height, top_panel_mode, top_panel_contains_mouse) =
+            TOP_PANEL
+                .with(|panel| {
+                    panel
+                        .try_borrow()
+                        .ok()
+                        .map(|panel| (panel.width, panel.height, panel.mode, panel.contains_mouse))
+                })
+                .unwrap();
+
         // Process keys, mouse etc.
         let screen_mouse_position = Vec2::from(mouse_position());
-        let mouse_position: Vec2 = screen_mouse_position - vec2(top_panel.width, top_panel.height);
+        let mouse_position: Vec2 = screen_mouse_position - vec2(top_panel_width, top_panel_height);
 
-        if let Mode::Edit = top_panel.mode {
-            if !top_panel.contains_mouse && is_mouse_button_pressed(MouseButton::Left) {
+        if let Mode::Edit = top_panel_mode {
+            if !top_panel_contains_mouse && is_mouse_button_pressed(MouseButton::Left) {
                 let new_click_time = get_time();
 
                 // Check for double click
@@ -190,10 +224,14 @@ async fn main() {
                 creating_transition_from = None;
             }
 
-            if !top_panel.contains_mouse && is_mouse_button_pressed(MouseButton::Right) {
-                top_panel.open_context_menu = true;
-                top_panel.context_menu_pos =
-                    mouse_position + vec2(top_panel.width, top_panel.height);
+            if !top_panel_contains_mouse && is_mouse_button_pressed(MouseButton::Right) {
+                TOP_PANEL.with(|panel| {
+                    panel.try_borrow_mut().ok().map(|mut panel| {
+                        panel.open_context_menu = true;
+                        panel.context_menu_pos =
+                            mouse_position + vec2(top_panel_width, top_panel_height);
+                    })
+                });
                 if let Some(state) = states.point_in_some_state(mouse_position, &fa) {
                     selected_state = Some(state);
                     dragging_selected = false;
@@ -205,16 +243,22 @@ async fn main() {
             }
         }
 
-        let command_opt = top_panel.ui(
-            &fa,
-            &mut states,
-            &mut configurations,
-            &mouse_position,
-            &mut selected_state,
-            &mut selected_transition,
-            !undo_stack.is_empty(),
-            !redo_stack.is_empty(),
-        );
+        let command_opt = TOP_PANEL
+            .with(|panel| {
+                panel.try_borrow_mut().ok().map(|mut panel| {
+                    panel.ui(
+                        &fa,
+                        &mut states,
+                        &mut configurations,
+                        &mouse_position,
+                        &mut selected_state,
+                        &mut selected_transition,
+                        !undo_stack.is_empty(),
+                        !redo_stack.is_empty(),
+                    )
+                })
+            })
+            .unwrap();
 
         if let Some(command) = command_opt {
             match command {
@@ -239,8 +283,8 @@ async fn main() {
         }
 
         set_camera(&Camera2D::from_display_rect(Rect::new(
-            -top_panel.width,
-            -top_panel.height,
+            -top_panel_width,
+            -top_panel_height,
             screen_width(),
             screen_height(),
         )));
@@ -297,7 +341,7 @@ async fn main() {
                 }
             }
 
-            let is_simulating = matches!(top_panel.mode, Mode::Simulate);
+            let is_simulating = matches!(top_panel_mode, Mode::Simulate);
             states.draw_states(&fa, is_simulating, &configurations, selected_state, &font);
         }
 
@@ -316,7 +360,7 @@ async fn main() {
             root_ui().push_skin(&editbox_skin);
             widgets::Window::new(
                 hash!("win", editing_transition.2, editing_transition.3),
-                editing_transition.0 + vec2(top_panel.width, top_panel.height),
+                editing_transition.0 + vec2(top_panel_width, top_panel_height),
                 transition_input_size,
             )
             .titlebar(false)
