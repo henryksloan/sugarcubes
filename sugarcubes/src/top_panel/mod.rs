@@ -13,16 +13,15 @@ use macroquad::prelude::*;
 use sapp_jsutils::JsObject;
 
 extern "C" {
-    fn console_log(js_object: JsObject);
-    fn hi_from_js();
     fn perform_demo() -> JsObject;
+    fn console_log(js_object: JsObject);
 }
 
 #[no_mangle]
-extern "C" fn hi_from_rust() {
-    // we can call JS from rust!
+extern "C" fn open_file(filename: JsObject) {
     unsafe {
-        hi_from_js();
+        console_log(JsObject::string("Opened: "));
+        console_log(filename);
     }
 }
 
@@ -204,8 +203,7 @@ impl TopPanel {
             egui::menu::menu(ui, "File", |ui| {
                 if ui.button("Open...").clicked() {
                     unsafe {
-                        console_log(perform_demo());
-                        console_log(JsObject::string("hi from rust!"));
+                        perform_demo();
                     }
                 }
             });
