@@ -12,9 +12,7 @@ use sugarcubes_core::automata::{
 
 use macroquad::prelude::*;
 use macroquad::ui::{hash, root_ui, widgets, Skin};
-use sapp_jsutils::JsObject;
 
-use std::cell::RefCell;
 use std::collections::HashMap;
 
 const DOUBLE_CLICK_DELAY: f64 = 0.25;
@@ -54,28 +52,6 @@ fn redo(
         undo_stack.push(command);
     }
 }
-
-extern "C" {
-    fn console_log(js_object: JsObject);
-}
-
-#[no_mangle]
-extern "C" fn open_file(filename: JsObject) {
-    unsafe {
-        console_log(JsObject::string("Opened: "));
-        let mut s = String::new();
-        filename.to_string(&mut s);
-        console_log(filename);
-        TOP_PANEL.with(|state| {
-            state
-                .try_borrow_mut()
-                .ok()
-                .map(|mut state| state.multiple_run_strings.push((s, None)))
-        });
-    }
-}
-
-thread_local! { pub static TOP_PANEL: RefCell<TopPanel> = RefCell::new(TopPanel::new()); }
 
 #[macroquad::main("Sugarcubes")]
 async fn main() {
