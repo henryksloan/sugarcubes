@@ -388,7 +388,6 @@ impl TopPanel {
                     self.multiple_run_selected_index = new_selected_index;
 
                     // "Enter" was pressed on the last TextEdit, and it was empty
-                    // if focus_next && !text_empty {
                     if add_new_line {
                         self.multiple_run_strings.push((String::new(), None));
                     }
