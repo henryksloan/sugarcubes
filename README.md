@@ -41,7 +41,6 @@ Sugarcubes is in an early stage of development, having support for editing and s
         * Movement and deletion of multiple objects
 * Simulation rewinding (this may require some sophistication to avoid combinatoric memory usage)
 * Saving (initially, either JFLAP-compatible or a custom file format)
-* Support loading input files for multiple run simulation
 * Under consideration
     * Implement undo/redo for moving
     * Editing transitions with the context menu
