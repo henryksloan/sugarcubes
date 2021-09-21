@@ -192,7 +192,9 @@ impl TopPanel {
         egui::menu::bar(ui, |ui| {
             egui::menu::menu(ui, "File", |ui| {
                 if ui.button("Open...").clicked() {
-                    perform_demo();
+                    unsafe {
+                        perform_demo();
+                    }
                 }
             });
 
