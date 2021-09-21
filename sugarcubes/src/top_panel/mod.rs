@@ -15,9 +15,13 @@ const CONFIGURATION_HEIGHT: f32 = 60.;
 pub const ACCEPT_COLOR: egui::Color32 = egui::Color32::from_rgb(122, 240, 98);
 pub const REJECT_COLOR: egui::Color32 = egui::Color32::RED;
 
+#[cfg(target_arch = "wasm32")]
 extern "C" {
     fn perform_demo();
 }
+
+#[cfg(not(target_arch = "wasm32"))]
+fn perform_demo() {}
 
 #[derive(Copy, Clone)]
 pub enum Mode {
@@ -188,9 +192,7 @@ impl TopPanel {
         egui::menu::bar(ui, |ui| {
             egui::menu::menu(ui, "File", |ui| {
                 if ui.button("Open...").clicked() {
-                    unsafe {
-                        perform_demo();
-                    }
+                    perform_demo();
                 }
             });
 
