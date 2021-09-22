@@ -10,7 +10,8 @@ async function choose_multiple_run_file() {
              const filename = file.name;
              const content = await file.text();
 
-             wasm_exports.read_multiple_run_inputs(js_object(content));
+             // wasm_exports.read_multiple_run_inputs(js_object(content));
+             wasm_exports.test_xmltree(js_object(content));
          },
          { capture: false, once: true }
      );
@@ -19,6 +20,7 @@ async function choose_multiple_run_file() {
 
 register_plugin = function (importObject) {
     importObject.env.choose_multiple_run_file = choose_multiple_run_file;
+    importObject.env.console_log = (obj) => console.log(consume_js_object(obj));
 }
 
 miniquad_add_plugin({
