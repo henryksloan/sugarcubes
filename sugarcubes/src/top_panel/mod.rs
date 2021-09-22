@@ -1,15 +1,17 @@
+mod context_menu;
+mod fast_run;
 mod input_window;
 mod left_panel;
 mod menu_bar;
+mod simulate_input_window;
 mod simulation_toolbar;
 
 use input_window::InputWindow;
 
 use crate::{command::*, states::*};
 
-use sugarcubes_core::automata::{
-    finite_automaton::{FiniteAutomaton, FiniteAutomatonConfiguration, FiniteAutomatonTransition},
-    SimulateAutomaton,
+use sugarcubes_core::automata::finite_automaton::{
+    FiniteAutomaton, FiniteAutomatonConfiguration, FiniteAutomatonTransition,
 };
 
 use macroquad::prelude::*;
@@ -177,187 +179,5 @@ impl TopPanel {
         });
 
         command
-    }
-
-    fn show_simulate_input_window(
-        &mut self,
-        egui_ctx: &egui::CtxRef,
-        fa: &FiniteAutomaton,
-    ) -> Option<TopPanelCommand> {
-        let mut command = None;
-
-        let mut new_configurations = None;
-        let (hit_ok, contains_mouse) = self.simulate_input_window.show(egui_ctx);
-        self.contains_mouse |= contains_mouse;
-
-        if hit_ok {
-            new_configurations = Some(fa.initial_configurations(&self.simulate_input_window.input));
-            self.mode = Mode::Simulate;
-            self.string_simulating = self.simulate_input_window.input.clone();
-            self.simulate_input_window.open = false;
-        }
-
-        if let Some(new_configurations) = new_configurations {
-            command = Some(TopPanelCommand::StartSimulation(new_configurations));
-        }
-
-        if !self.simulate_input_window.open {
-            self.simulate_input_window.input.clear();
-        }
-
-        command
-    }
-
-    fn show_fast_run_input_window(&mut self, egui_ctx: &egui::CtxRef, fa: &FiniteAutomaton) {
-        let (hit_ok, contains_mouse) = self.fast_run_input_window.show(egui_ctx);
-        self.contains_mouse |= contains_mouse;
-
-        if hit_ok {
-            self.fast_run_input_window.open = false;
-            self.fast_run_string = self.fast_run_input_window.input.clone();
-            self.fast_run_result = Some(fa.check_input(&self.fast_run_input_window.input));
-        }
-
-        if !self.fast_run_input_window.open {
-            self.fast_run_input_window.input.clear();
-        }
-    }
-
-    fn show_fast_run_result_window(&mut self, egui_ctx: &egui::CtxRef, fast_run_result: bool) {
-        let mut result_open = true;
-        egui::Window::new("Fast Run Result")
-            .open(&mut result_open)
-            .resizable(false)
-            .collapsible(false)
-            .show(egui_ctx, |ui| {
-                ui.horizontal(|ui| {
-                    ui.label(format!("Result for string \"{}\": ", self.fast_run_string));
-                    if fast_run_result {
-                        ui.add(egui::widgets::Label::new("Accepted").text_color(ACCEPT_COLOR));
-                    } else {
-                        ui.add(egui::widgets::Label::new("Rejected").text_color(REJECT_COLOR));
-                    }
-                });
-            });
-        if !result_open {
-            self.fast_run_result = None;
-        }
-    }
-
-    fn context_menu(
-        &mut self,
-        egui_ctx: &egui::CtxRef,
-        fa: &FiniteAutomaton,
-        states: &mut States,
-        mouse_position: &Vec2,
-        selected_state: &mut Option<u32>,
-        selected_transition: &mut Option<FiniteAutomatonTransition>,
-    ) -> Option<Command> {
-        let mut command = None;
-
-        egui::Area::new("context_menu").show(egui_ctx, |ui| {
-            let popup_id = ui.make_persistent_id("context_menu_id");
-            if self.open_context_menu {
-                ui.memory().open_popup(popup_id);
-                self.open_context_menu = false;
-            }
-            let mut mouse_in_popup = false;
-            if ui.memory().is_popup_open(popup_id) {
-                let parent_clip_rect = ui.clip_rect();
-
-                egui::Area::new(popup_id)
-                    .order(egui::Order::Foreground)
-                    .fixed_pos((self.context_menu_pos.x, self.context_menu_pos.y))
-                    .show(ui.ctx(), |ui| {
-                        ui.set_clip_rect(parent_clip_rect);
-                        let frame = egui::Frame::popup(ui.style());
-                        let frame_margin = frame.margin;
-                        frame.show(ui, |ui| {
-                            ui.with_layout(
-                                egui::Layout::top_down_justified(egui::Align::LEFT),
-                                |ui| {
-                                    ui.set_width(100.0 - 2.0 * frame_margin.x);
-                                    if let Some(selected) = *selected_state {
-                                        let mut is_initial =
-                                            fa.automaton.initial() == Some(selected);
-                                        if ui.checkbox(&mut is_initial, "Initial").changed() {
-                                            if is_initial {
-                                                command = Some(Command::SetInitial(
-                                                    selected,
-                                                    fa.automaton.initial(),
-                                                ));
-                                            } else {
-                                                command = Some(Command::RemoveInitial(selected));
-                                            }
-                                            *selected_state = None;
-                                            ui.memory().close_popup();
-                                        }
-
-                                        let mut is_final = fa.automaton.is_final(selected);
-                                        if ui.checkbox(&mut is_final, "Final").changed() {
-                                            command = Some(Command::SetFinal(selected, is_final));
-                                            *selected_state = None;
-                                            ui.memory().close_popup();
-                                        }
-
-                                        ui.separator();
-
-                                        if ui.button("Delete").clicked() {
-                                            command = Some(Command::DeleteState(
-                                                selected,
-                                                *states.get_position(selected),
-                                                fa.automaton
-                                                    .transitions_with(selected)
-                                                    .into_iter()
-                                                    .cloned()
-                                                    .collect(),
-                                            ));
-                                            *selected_state = None;
-                                            ui.memory().close_popup();
-                                        }
-                                    } else if let Some(selected) = *selected_transition {
-                                        if ui.button("Delete").clicked() {
-                                            command = Some(Command::DeleteTransition(selected));
-                                            *selected_transition = None;
-                                            ui.memory().close_popup();
-                                        }
-                                    }
-
-                                    mouse_in_popup = ui.ui_contains_pointer();
-                                    self.contains_mouse |= mouse_in_popup;
-                                },
-                            );
-                        });
-                    });
-
-                if ui.input().key_pressed(egui::Key::Escape) {
-                    ui.memory().close_popup();
-                    *selected_state = None;
-                } else if is_mouse_button_pressed(MouseButton::Left) && !mouse_in_popup {
-                    ui.memory().close_popup();
-
-                    // Clear selected state if the cancelling click is not in the selected state
-                    if let Some(selected) = *selected_state {
-                        if !states.point_in_state(*mouse_position, selected) {
-                            *selected_state = None;
-                        }
-                    }
-                }
-
-                self.contains_mouse |= ui.ui_contains_pointer();
-            }
-        });
-
-        command
-    }
-
-    fn load_multiple_run_inputs(&mut self, content_string: String) {
-        self.multiple_run_strings = content_string
-            .lines()
-            .map(|line| (line.to_string(), None))
-            .collect();
-        if self.multiple_run_strings.is_empty() {
-            self.multiple_run_strings.push((String::new(), None));
-        }
     }
 }

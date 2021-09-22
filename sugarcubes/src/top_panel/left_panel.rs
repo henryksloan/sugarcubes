@@ -123,4 +123,14 @@ impl TopPanel {
         }
         (new_selected_index, add_new_line)
     }
+
+    fn load_multiple_run_inputs(&mut self, content_string: String) {
+        self.multiple_run_strings = content_string
+            .lines()
+            .map(|line| (line.to_string(), None))
+            .collect();
+        if self.multiple_run_strings.is_empty() {
+            self.multiple_run_strings.push((String::new(), None));
+        }
+    }
 }
