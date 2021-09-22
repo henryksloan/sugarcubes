@@ -58,6 +58,10 @@ impl<T: Transition> Automaton<T> {
         self.states.keys()
     }
 
+    pub fn transitions(&self) -> Vec<&T> {
+        self.transitions.transitions()
+    }
+
     pub fn transitions_from(&self, from: u32) -> Vec<&T> {
         self.transitions.from(from)
     }

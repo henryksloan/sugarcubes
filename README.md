@@ -40,7 +40,6 @@ Sugarcubes is in an early stage of development, having support for editing and s
         * Click-drag starting on the background
         * Movement and deletion of multiple objects
 * Simulation rewinding (this may require some sophistication to avoid combinatoric memory usage)
-* Saving to JFF
 * Under consideration
     * Implement undo/redo for moving
     * Editing transitions with the context menu

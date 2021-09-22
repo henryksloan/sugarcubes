@@ -19,6 +19,12 @@ async function choose_jff_file() {
      element.click();
 };
 
+async function save_jff_file(js_object) {
+    // TODO: Figure out a way to open the "save as" dialog
+    var blob = new Blob([consume_js_object(js_object)], {type: 'text/plain'});
+    saveAs(blob, "sugarcubes.jff");
+}
+
 async function choose_multiple_run_file() {
      const element = document.createElement("input");
      element.type = "file";
@@ -41,6 +47,7 @@ async function choose_multiple_run_file() {
 register_plugin = function (importObject) {
     importObject.env.choose_multiple_run_file = choose_multiple_run_file;
     importObject.env.choose_jff_file = choose_jff_file;
+    importObject.env.save_jff_file = save_jff_file;
 }
 
 miniquad_add_plugin({
