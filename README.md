@@ -40,7 +40,7 @@ Sugarcubes is in an early stage of development, having support for editing and s
         * Click-drag starting on the background
         * Movement and deletion of multiple objects
 * Simulation rewinding (this may require some sophistication to avoid combinatoric memory usage)
-* Saving (initially, either JFLAP-compatible or a custom file format)
+* Saving to JFF
 * Under consideration
     * Implement undo/redo for moving
     * Editing transitions with the context menu
@@ -61,3 +61,4 @@ Sugarcubes is in an early stage of development, having support for editing and s
 ## Stretch goals/pipe dreams
 * Collaborative editing
 * Generating URLs of models for easy sharing
+* Potentially a custom file format for features not present in JFLAP
