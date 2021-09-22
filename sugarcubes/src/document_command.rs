@@ -27,9 +27,8 @@ impl DocumentCommand {
         fa: &mut FiniteAutomaton,
         states: &mut States,
     ) -> Option<()> {
-        // TODO: Make this operation atomic
-        *fa = FiniteAutomaton::default();
-        *states = States::new();
+        let mut new_fa = FiniteAutomaton::default();
+        let mut new_states = States::new();
 
         let element = xmltree::Element::parse(content_string.as_bytes()).ok()?;
         // TODO: Error if type is wrong. Eventually, treat different types differently.
@@ -46,14 +45,14 @@ impl DocumentCommand {
                     let is_initial = element.get_child("initial").is_some();
                     let is_final = element.get_child("final").is_some();
                     // TODO: Tune these multipliers, and move them to constants
-                    states.try_add_state_with_id(fa, vec2(x * 2.0, y * 2.0), id);
+                    new_states.try_add_state_with_id(&mut new_fa, vec2(x * 2.0, y * 2.0), id);
 
                     if is_initial {
-                        fa.automaton.set_initial(id);
+                        new_fa.automaton.set_initial(id);
                     }
 
                     if is_final {
-                        fa.automaton.set_final(id, true);
+                        new_fa.automaton.set_final(id, true);
                     }
                 }
             }
@@ -66,11 +65,15 @@ impl DocumentCommand {
                     let from: u32 = element.get_child("from")?.get_text()?.parse().ok()?;
                     let to: u32 = element.get_child("to")?.get_text()?.parse().ok()?;
                     let read = element.get_child("read")?.get_text()?.chars().next()?;
-                    fa.automaton
+                    new_fa
+                        .automaton
                         .add_transition(FiniteAutomatonTransition::new(from, to, read));
                 }
             }
         }
+
+        *fa = new_fa;
+        *states = new_states;
 
         Some(())
     }
