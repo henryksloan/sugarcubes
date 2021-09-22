@@ -6,8 +6,10 @@ use sugarcubes_core::automata::{
 };
 
 use macroquad::prelude::*;
-use sapp_jsutils::JsObject;
 use xmltree::{Element, XMLNode};
+
+#[cfg(target_arch = "wasm32")]
+use sapp_jsutils::JsObject;
 
 use std::io::BufWriter;
 
@@ -15,9 +17,6 @@ use std::io::BufWriter;
 extern "C" {
     fn save_jff_file(content: JsObject);
 }
-
-#[cfg(not(target_arch = "wasm32"))]
-unsafe fn save_jff_file(content: JsObject) {}
 
 // The sizing scale going from JFLAP to Sugarcubes
 // e.g. 2.0 means (100.0, 100.0) in JFLAP is (200.0, 200.0) in Sugarcubes
@@ -184,6 +183,7 @@ impl DocumentCommand {
             let buffer = BufWriter::new(content.as_mut_vec());
             // TODO: Consider formatting the file better, e.g. with newlines
             structure.write(buffer).ok()?;
+            #[cfg(target_arch = "wasm32")]
             save_jff_file(JsObject::string(&content));
         }
 
