@@ -26,7 +26,7 @@ use std::collections::HashMap;
 use sapp_jsutils::JsObject;
 
 #[no_mangle]
-extern "C" fn test_xmltree(content: JsObject) {
+extern "C" fn open_jff_file(content: JsObject) {
     let mut content_string = String::new();
     content.to_string(&mut content_string);
 

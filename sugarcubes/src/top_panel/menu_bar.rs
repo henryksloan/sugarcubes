@@ -1,5 +1,13 @@
 use super::{Mode, TopPanel, TopPanelCommand};
 
+#[cfg(target_arch = "wasm32")]
+extern "C" {
+    fn choose_jff_file();
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+unsafe fn choose_jff_file() {}
+
 impl TopPanel {
     pub(super) fn menu_bar(
         &mut self,
@@ -26,7 +34,9 @@ impl TopPanel {
     fn file_menu(&mut self, ui: &mut egui::Ui) {
         egui::menu::menu(ui, "File", |ui| {
             if ui.button("Open...").clicked() {
-                // ...
+                unsafe {
+                    choose_jff_file();
+                }
             }
         });
     }
