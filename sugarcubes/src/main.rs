@@ -1,12 +1,16 @@
 extern crate xmltree;
 
 mod command;
+mod document_command;
 mod states;
 mod top_panel;
 mod top_panel_command_handler;
 mod transitions;
 
-use crate::{command::*, states::*, top_panel::*, top_panel_command_handler::*, transitions::*};
+use crate::{
+    command::*, document_command::*, states::*, top_panel::*, top_panel_command_handler::*,
+    transitions::*,
+};
 
 use sugarcubes_core::automata::{
     finite_automaton::{FiniteAutomaton, FiniteAutomatonTransition},
@@ -16,6 +20,7 @@ use sugarcubes_core::automata::{
 use macroquad::prelude::*;
 use macroquad::ui::{hash, root_ui, widgets, Skin};
 
+use std::cell::RefCell;
 use std::collections::HashMap;
 
 use sapp_jsutils::JsObject;
@@ -32,6 +37,14 @@ extern "C" fn test_xmltree(content: JsObject) {
 fn test_xmltree_impl(content: JsObject) -> Option<()> {
     let mut content_string = String::new();
     content.to_string(&mut content_string);
+
+    DOCUMENT_COMMAND_BUFFER.with(|buff| {
+        if let Ok(mut buff) = buff.try_borrow_mut() {
+            // TODO: Remove clone when it isn't needed afterwards
+            buff.push(DocumentCommand::OpenJFF(content_string.clone()));
+        }
+    });
+
     let element = xmltree::Element::parse(content_string.as_bytes()).ok()?;
     let model_type = element.get_child("type")?.get_text()?;
     let automaton = element.get_child("automaton")?;
@@ -80,6 +93,8 @@ fn test_xmltree_impl(content: JsObject) -> Option<()> {
     }
     Some(())
 }
+
+thread_local! { pub static DOCUMENT_COMMAND_BUFFER: RefCell<Vec<DocumentCommand>> = RefCell::new(Vec::new()); }
 
 const DOUBLE_CLICK_DELAY: f64 = 0.25;
 
@@ -160,6 +175,14 @@ async fn main() {
 
     loop {
         clear_background(WHITE);
+
+        DOCUMENT_COMMAND_BUFFER.with(|buff| {
+            if let Ok(mut buff) = buff.try_borrow_mut() {
+                while let Some(document_command) = buff.pop() {
+                    document_command.execute(&mut fa, &mut states);
+                }
+            }
+        });
 
         // Copy state from the top panel
         let (top_panel_width, top_panel_height, top_panel_mode, top_panel_contains_mouse) =
