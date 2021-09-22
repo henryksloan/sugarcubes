@@ -25,73 +25,16 @@ use std::collections::HashMap;
 
 use sapp_jsutils::JsObject;
 
-extern "C" {
-    fn console_log(object: JsObject);
-}
-
 #[no_mangle]
 extern "C" fn test_xmltree(content: JsObject) {
-    let _ = test_xmltree_impl(content);
-}
-
-fn test_xmltree_impl(content: JsObject) -> Option<()> {
     let mut content_string = String::new();
     content.to_string(&mut content_string);
 
     DOCUMENT_COMMAND_BUFFER.with(|buff| {
         if let Ok(mut buff) = buff.try_borrow_mut() {
-            // TODO: Remove clone when it isn't needed afterwards
-            buff.push(DocumentCommand::OpenJFF(content_string.clone()));
+            buff.push(DocumentCommand::OpenJFF(content_string));
         }
     });
-
-    let element = xmltree::Element::parse(content_string.as_bytes()).ok()?;
-    let model_type = element.get_child("type")?.get_text()?;
-    let automaton = element.get_child("automaton")?;
-    for child in &automaton.children {
-        if let xmltree::XMLNode::Element(element) = child {
-            match element.name.as_str() {
-                "state" => {
-                    let x = element.get_child("x")?.get_text()?;
-                    let y = element.get_child("y")?.get_text()?;
-                    let is_initial = element.get_child("initial").is_some();
-                    let is_final = element.get_child("final").is_some();
-                    unsafe {
-                        console_log(JsObject::string(
-                            &format!(
-                                "state {} {} ({}, {}) initial:{} final:{}",
-                                element.attributes.get("id")?,
-                                element.attributes.get("name")?,
-                                x,
-                                y,
-                                is_initial,
-                                is_final,
-                            )
-                            .to_string(),
-                        ));
-                    }
-                }
-                "transition" => {
-                    let from = element.get_child("from")?.get_text()?;
-                    let to = element.get_child("to")?.get_text()?;
-                    let read = element.get_child("read")?.get_text()?;
-                    unsafe {
-                        console_log(JsObject::string(
-                            &format!("transition {} -> {} symbol: {}", from, to, read).to_string(),
-                        ));
-                    }
-                }
-                _ => {}
-            }
-        }
-    }
-    unsafe {
-        console_log(JsObject::string(
-            &format!("type: {:#?}", model_type).to_string(),
-        ));
-        // console_log(JsObject::string(&format!("{:#?}", element).to_string()));
-    }
-    Some(())
 }
 
 thread_local! { pub static DOCUMENT_COMMAND_BUFFER: RefCell<Vec<DocumentCommand>> = RefCell::new(Vec::new()); }
