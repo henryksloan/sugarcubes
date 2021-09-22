@@ -1,9 +1,16 @@
+extern crate xmltree;
+
 mod command;
+mod document_command;
 mod states;
 mod top_panel;
+mod top_panel_command_handler;
 mod transitions;
 
-use crate::{command::*, states::*, top_panel::*, transitions::*};
+use crate::{
+    command::*, document_command::*, states::*, top_panel::*, top_panel_command_handler::*,
+    transitions::*,
+};
 
 use sugarcubes_core::automata::{
     finite_automaton::{FiniteAutomaton, FiniteAutomatonTransition},
@@ -13,45 +20,26 @@ use sugarcubes_core::automata::{
 use macroquad::prelude::*;
 use macroquad::ui::{hash, root_ui, widgets, Skin};
 
+use std::cell::RefCell;
 use std::collections::HashMap;
 
+use sapp_jsutils::JsObject;
+
+#[no_mangle]
+extern "C" fn open_jff_file(content: JsObject) {
+    let mut content_string = String::new();
+    content.to_string(&mut content_string);
+
+    DOCUMENT_COMMAND_BUFFER.with(|buff| {
+        if let Ok(mut buff) = buff.try_borrow_mut() {
+            buff.push(DocumentCommand::OpenJFF(content_string));
+        }
+    });
+}
+
+thread_local! { pub static DOCUMENT_COMMAND_BUFFER: RefCell<Vec<DocumentCommand>> = RefCell::new(Vec::new()); }
+
 const DOUBLE_CLICK_DELAY: f64 = 0.25;
-
-fn execute(
-    command: Command,
-    fa: &mut FiniteAutomaton,
-    states: &mut States,
-    undo_stack: &mut Vec<Command>,
-    redo_stack: &mut Vec<Command>,
-) {
-    command.execute(fa, states);
-    undo_stack.push(command);
-    redo_stack.clear();
-}
-
-fn undo(
-    fa: &mut FiniteAutomaton,
-    states: &mut States,
-    undo_stack: &mut Vec<Command>,
-    redo_stack: &mut Vec<Command>,
-) {
-    if let Some(command) = undo_stack.pop() {
-        command.undo(fa, states);
-        redo_stack.push(command);
-    }
-}
-
-fn redo(
-    fa: &mut FiniteAutomaton,
-    states: &mut States,
-    undo_stack: &mut Vec<Command>,
-    redo_stack: &mut Vec<Command>,
-) {
-    if let Some(command) = redo_stack.pop() {
-        command.execute(fa, states);
-        undo_stack.push(command);
-    }
-}
 
 #[macroquad::main("Sugarcubes")]
 async fn main() {
@@ -124,13 +112,20 @@ async fn main() {
     // If the user is editing a transition, this holds its (position, text, state_from, state_to)
     let mut editing_transition: Option<(Vec2, String, u32, u32)> = None;
 
-    let mut undo_stack: Vec<Command> = Vec::new();
-    let mut redo_stack: Vec<Command> = Vec::new();
+    let mut top_panel_command_handler = TopPanelCommandHandler::new();
 
     let mut last_click_time = 0.;
 
     loop {
         clear_background(WHITE);
+
+        DOCUMENT_COMMAND_BUFFER.with(|buff| {
+            if let Ok(mut buff) = buff.try_borrow_mut() {
+                while let Some(document_command) = buff.pop() {
+                    document_command.execute(&mut fa, &mut states);
+                }
+            }
+        });
 
         // Copy state from the top panel
         let (top_panel_width, top_panel_height, top_panel_mode, top_panel_contains_mouse) =
@@ -159,12 +154,10 @@ async fn main() {
                         creating_transition_from = Some(state);
                     } else {
                         let id = fa.automaton.get_next_state_id();
-                        execute(
+                        top_panel_command_handler.execute(
                             Command::CreateState(id, mouse_position),
                             &mut fa,
                             &mut states,
-                            &mut undo_stack,
-                            &mut redo_stack,
                         );
                         selected_state = Some(id);
                         state_drag_offset = Vec2::ZERO;
@@ -229,8 +222,8 @@ async fn main() {
                         &mouse_position,
                         &mut selected_state,
                         &mut selected_transition,
-                        !undo_stack.is_empty(),
-                        !redo_stack.is_empty(),
+                        top_panel_command_handler.can_undo(),
+                        top_panel_command_handler.can_redo(),
                     )
                 })
             })
@@ -238,19 +231,11 @@ async fn main() {
 
         if let Some(command) = command_opt {
             match command {
-                TopPanelCommand::Command(command) => execute(
-                    command,
-                    &mut fa,
-                    &mut states,
-                    &mut undo_stack,
-                    &mut redo_stack,
-                ),
-                TopPanelCommand::Undo => {
-                    undo(&mut fa, &mut states, &mut undo_stack, &mut redo_stack)
+                TopPanelCommand::Command(command) => {
+                    top_panel_command_handler.execute(command, &mut fa, &mut states)
                 }
-                TopPanelCommand::Redo => {
-                    redo(&mut fa, &mut states, &mut undo_stack, &mut redo_stack)
-                }
+                TopPanelCommand::Undo => top_panel_command_handler.undo(&mut fa, &mut states),
+                TopPanelCommand::Redo => top_panel_command_handler.redo(&mut fa, &mut states),
                 TopPanelCommand::Step => configurations = fa.step_all(configurations),
                 TopPanelCommand::StartSimulation(new_configurations) => {
                     configurations = new_configurations.to_vec()
@@ -358,12 +343,10 @@ async fn main() {
                     tuple.3,
                     tuple.1.chars().next().unwrap_or(EMPTY_STRING),
                 );
-                execute(
+                top_panel_command_handler.execute(
                     Command::CreateTransition(transition),
                     &mut fa,
                     &mut states,
-                    &mut undo_stack,
-                    &mut redo_stack,
                 );
                 editing_transition = None;
             } else if is_key_pressed(KeyCode::Escape) {
