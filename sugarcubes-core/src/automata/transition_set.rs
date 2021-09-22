@@ -92,6 +92,10 @@ impl<T: Transition> TransitionSet<T> {
                 .any(|transition| transition.from() == state1)
     }
 
+    pub fn transitions(&self) -> Vec<&T> {
+        self.transitions.iter().map(|pair| pair.1).collect()
+    }
+
     pub fn from(&self, from: u32) -> Vec<&T> {
         self.keys_from(from)
             .iter()

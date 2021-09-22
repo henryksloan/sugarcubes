@@ -1,4 +1,5 @@
 use super::{Mode, TopPanel, TopPanelCommand};
+use crate::{DocumentCommand, DOCUMENT_COMMAND_BUFFER};
 
 #[cfg(target_arch = "wasm32")]
 extern "C" {
@@ -33,10 +34,22 @@ impl TopPanel {
 
     fn file_menu(&mut self, ui: &mut egui::Ui) {
         egui::menu::menu(ui, "File", |ui| {
+            if ui.button("New...").clicked() {
+                // TODO
+            }
+
             if ui.button("Open...").clicked() {
                 unsafe {
                     choose_jff_file();
                 }
+            }
+
+            if ui.button("Save").clicked() {
+                DOCUMENT_COMMAND_BUFFER.with(|buff| {
+                    if let Ok(mut buff) = buff.try_borrow_mut() {
+                        buff.push(DocumentCommand::SaveJFF);
+                    }
+                });
             }
         });
     }
