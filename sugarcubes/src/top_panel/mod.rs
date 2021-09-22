@@ -1,5 +1,7 @@
 mod input_window;
+mod left_panel;
 mod menu_bar;
+mod simulation_toolbar;
 
 use input_window::InputWindow;
 
@@ -7,38 +9,17 @@ use crate::{command::*, states::*};
 
 use sugarcubes_core::automata::{
     finite_automaton::{FiniteAutomaton, FiniteAutomatonConfiguration, FiniteAutomatonTransition},
-    Configuration, SimulateAutomaton, EMPTY_STRING,
+    SimulateAutomaton,
 };
 
 use macroquad::prelude::*;
-use sapp_jsutils::JsObject;
 
 use std::cell::RefCell;
 
-const CONFIGURATION_HEIGHT: f32 = 60.;
 pub const ACCEPT_COLOR: egui::Color32 = egui::Color32::from_rgb(122, 240, 98);
 pub const REJECT_COLOR: egui::Color32 = egui::Color32::RED;
 
 thread_local! { pub static TOP_PANEL: RefCell<TopPanel> = RefCell::new(TopPanel::new()); }
-
-#[cfg(target_arch = "wasm32")]
-extern "C" {
-    fn choose_multiple_run_file();
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-unsafe fn choose_multiple_run_file() {}
-
-#[no_mangle]
-extern "C" fn read_multiple_run_inputs(content: JsObject) {
-    let mut content_string = String::new();
-    content.to_string(&mut content_string);
-    TOP_PANEL.with(|panel| {
-        if let Ok(mut panel) = panel.try_borrow_mut() {
-            panel.load_multiple_run_inputs(content_string)
-        }
-    });
-}
 
 #[derive(Copy, Clone)]
 pub enum Mode {
@@ -196,183 +177,6 @@ impl TopPanel {
         });
 
         command
-    }
-
-    fn simulation_toolbar(
-        &mut self,
-        ui: &mut egui::Ui,
-        fa: &FiniteAutomaton,
-        configurations: &mut Vec<FiniteAutomatonConfiguration>,
-    ) -> Option<TopPanelCommand> {
-        let mut command = None;
-
-        ui.horizontal(|ui| {
-            if ui.button("X").clicked() {
-                self.mode = Mode::Edit;
-            }
-
-            ui.vertical(|ui| {
-                ui.add(
-                    egui::Label::new(format!("Simulating \"{}\"", self.string_simulating))
-                        .heading(),
-                );
-
-                ui.separator();
-
-                ui.horizontal(|ui| {
-                    ui.set_min_height(CONFIGURATION_HEIGHT);
-                    for configuration in configurations {
-                        let config_exhausted = configuration.remaining_string.is_empty()
-                            && !fa
-                                .automaton
-                                .transitions_from(configuration.state())
-                                .into_iter()
-                                .any(|&transition| transition.symbol() == EMPTY_STRING);
-
-                        let (fill, text_color, message) = if config_exhausted {
-                            if fa.automaton.is_final(configuration.state()) {
-                                (
-                                    Some(egui::Color32::from_rgb(122, 240, 98)),
-                                    egui::Color32::BLACK,
-                                    "accept",
-                                )
-                            } else {
-                                (Some(egui::Color32::RED), egui::Color32::WHITE, "reject")
-                            }
-                        } else {
-                            (
-                                None,
-                                egui::Color32::WHITE,
-                                configuration.remaining_string.as_str(),
-                            )
-                        };
-
-                        let mut button = egui::Button::new(format!(
-                            "{}\n{}",
-                            configuration.state().to_string(),
-                            message,
-                        ))
-                        .text_color(text_color)
-                        .text_style(egui::TextStyle::Heading);
-
-                        if let Some(fill) = fill {
-                            button = button.fill(fill);
-                        }
-
-                        if ui.add_sized([75., CONFIGURATION_HEIGHT], button).clicked() {}
-                    }
-                });
-
-                ui.separator();
-
-                ui.horizontal(|ui| {
-                    if ui.button("Step").clicked() {
-                        command = Some(TopPanelCommand::Step);
-                    }
-
-                    if ui.button("Reset").clicked() {
-                        command = Some(TopPanelCommand::StartSimulation(
-                            fa.initial_configurations(&self.string_simulating),
-                        ))
-                    }
-                });
-            });
-        });
-
-        command
-    }
-
-    fn left_panel(&mut self, egui_ctx: &egui::CtxRef, fa: &FiniteAutomaton) {
-        egui::SidePanel::left("multiple_run")
-            .resizable(false)
-            .show(egui_ctx, |ui| {
-                ui.horizontal(|ui| {
-                    ui.with_layout(egui::Layout::left_to_right(), |ui| {
-                        ui.heading("Multiple Run");
-                    });
-                    ui.with_layout(egui::Layout::right_to_left(), |ui| {
-                        if ui.button("X").clicked() {
-                            self.mode = Mode::Edit;
-                        }
-                    });
-                });
-
-                ui.separator();
-
-                egui::ScrollArea::auto_sized().show(ui, |ui| {
-                    let selected_index = self.multiple_run_selected_index;
-                    let mut add_new_line = false;
-                    let mut new_selected_index = selected_index;
-                    let num_strings = self.multiple_run_strings.len();
-                    for (i, (text, status)) in self.multiple_run_strings.iter_mut().enumerate() {
-                        ui.horizontal(|ui| {
-                            let text_edit = ui.add(egui::TextEdit::singleline(text));
-
-                            if text_edit.lost_focus() {
-                                if ui.input().key_pressed(egui::Key::Enter) {
-                                    if i == num_strings - 1 && !text.is_empty() {
-                                        add_new_line = true;
-                                        new_selected_index = Some(i + 1);
-                                    } else {
-                                        new_selected_index = Some((i + 1) % num_strings);
-                                    }
-                                } else {
-                                    new_selected_index = None;
-                                }
-                            }
-
-                            if let Some(selected_index) = selected_index {
-                                // If this index is selected, and hasn't been clicked off of
-                                if selected_index == i && new_selected_index.is_some() {
-                                    text_edit.request_focus();
-                                }
-                            }
-
-                            let label = match status {
-                                None => "⛶",
-                                Some(false) => "🗙",
-                                Some(true) => "✔",
-                            };
-                            ui.add(egui::Label::new(label));
-                        });
-                    }
-
-                    self.multiple_run_selected_index = new_selected_index;
-
-                    // "Enter" was pressed on the last TextEdit, and it was empty
-                    if add_new_line {
-                        self.multiple_run_strings.push((String::new(), None));
-                    }
-
-                    ui.horizontal(|ui| {
-                        if ui.button("Run").clicked() {
-                            for (text, status) in self.multiple_run_strings.iter_mut() {
-                                *status = Some(fa.check_input(text));
-                            }
-
-                            // If the last string is empty, discard the result,
-                            // as it is most likely just an extra blank line, not a user's query
-                            if let Some(mut last_string) = self.multiple_run_strings.last_mut() {
-                                if last_string.0.is_empty() {
-                                    last_string.1 = None;
-                                }
-                            }
-                        }
-
-                        if ui.button("Load from file").clicked() {
-                            unsafe {
-                                choose_multiple_run_file();
-                            }
-                        }
-
-                        if ui.button("Clear").clicked() {
-                            self.multiple_run_strings = vec![(String::new(), None)];
-                        }
-                    });
-                });
-
-                self.width = ui.max_rect().width();
-            });
     }
 
     fn show_simulate_input_window(
