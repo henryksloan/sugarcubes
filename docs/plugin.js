@@ -20,7 +20,6 @@ async function choose_multiple_run_file() {
 
 register_plugin = function (importObject) {
     importObject.env.choose_multiple_run_file = choose_multiple_run_file;
-    importObject.env.console_log = (obj) => console.log(consume_js_object(obj));
 }
 
 miniquad_add_plugin({
