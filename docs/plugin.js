@@ -20,9 +20,25 @@ async function choose_jff_file() {
 };
 
 async function save_jff_file(js_object) {
-    // TODO: Figure out a way to open the "save as" dialog
-    var blob = new Blob([consume_js_object(js_object)], {type: 'text/plain'});
-    saveAs(blob, "sugarcubes.jff");
+    if (typeof window.showSaveFilePicker == 'function') {
+        // This is the "Save as..." behavior that users expect,
+        // but it is currently only available on a few browsers (including Chrome)
+        const opts = {
+          types: [{
+            description: 'JFF file',
+            accept: {'text/plain': ['.jff']},
+          }],
+        };
+        try {
+            var fileHandle = await window.showSaveFilePicker(opts);
+            const writable = await fileHandle.createWritable();
+            await writable.write(consume_js_object(js_object));
+            await writable.close();
+        } catch(err) {}
+    } else {
+        var blob = new Blob([consume_js_object(js_object)], {type: 'text/plain'});
+        saveAs(blob, "sugarcubes.jff");
+    }
 }
 
 async function choose_multiple_run_file() {

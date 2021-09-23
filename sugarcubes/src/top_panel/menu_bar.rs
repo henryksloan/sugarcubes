@@ -34,8 +34,12 @@ impl TopPanel {
 
     fn file_menu(&mut self, ui: &mut egui::Ui) {
         egui::menu::menu(ui, "File", |ui| {
-            if ui.button("New...").clicked() {
-                // TODO
+            if ui.button("New").clicked() {
+                DOCUMENT_COMMAND_BUFFER.with(|buff| {
+                    if let Ok(mut buff) = buff.try_borrow_mut() {
+                        buff.push(DocumentCommand::NewFile);
+                    }
+                });
             }
 
             if ui.button("Open...").clicked() {
@@ -44,6 +48,8 @@ impl TopPanel {
                 }
             }
 
+            // TODO: Split into "Save" and "Save as..."
+            // where the former is aware of the current file's name, if any
             if ui.button("Save").clicked() {
                 DOCUMENT_COMMAND_BUFFER.with(|buff| {
                     if let Ok(mut buff) = buff.try_borrow_mut() {
