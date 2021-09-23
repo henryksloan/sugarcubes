@@ -24,6 +24,7 @@ const SCALE_FACTOR: f32 = 2.0;
 
 // Defines actions that read or write the entire document state
 pub enum DocumentCommand {
+    NewFile,
     OpenJFF(String),
     SaveJFF,
 }
@@ -31,6 +32,13 @@ pub enum DocumentCommand {
 impl DocumentCommand {
     pub fn execute(&self, fa: &mut FiniteAutomaton, states: &mut States) {
         match &*self {
+            Self::NewFile => {
+                // TODO: Alert the user if they have unsaved changes
+                // possibly by packing all save-invalidating commands (e.g. moving states,
+                // deleting) into a dispatcher
+                *fa = FiniteAutomaton::default();
+                *states = States::new();
+            }
             Self::OpenJFF(content_string) => {
                 // TODO: Report errors to user
                 let _ = self.open_jff(content_string, fa, states);
