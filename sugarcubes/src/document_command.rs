@@ -126,13 +126,10 @@ impl DocumentCommand {
             let mut state = Element::new("state");
 
             let id_string = id.to_string();
-            let name_string = {
-                let mut name_string = "q".to_string();
-                name_string.push_str(&id_string);
-                name_string
-            };
             state.attributes.insert("id".to_owned(), id_string);
-            state.attributes.insert("name".to_owned(), name_string);
+            state
+                .attributes
+                .insert("name".to_owned(), states.get_name(*id));
 
             let (x, y) = (*states.get_position(*id)).into();
             let mut x_element = Element::new("x");
