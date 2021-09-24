@@ -55,11 +55,14 @@ impl States {
         self.name_map.insert(state, name);
     }
 
+    pub fn default_name(state: u32) -> String {
+        DEFAULT_NAME_PREFIX.to_owned() + &state.to_string()
+    }
+
     pub fn add_state(&mut self, fa: &mut FiniteAutomaton, position: Vec2) -> u32 {
         let state = fa.automaton.add_new_state();
         self.position_map.insert(state, position);
-        self.name_map
-            .insert(state, DEFAULT_NAME_PREFIX.to_owned() + &state.to_string());
+        self.name_map.insert(state, Self::default_name(state));
         state
     }
 

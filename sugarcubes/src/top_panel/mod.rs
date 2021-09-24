@@ -3,6 +3,7 @@ mod fast_run;
 mod input_window;
 mod left_panel;
 mod menu_bar;
+mod set_name;
 mod simulate_input_window;
 mod simulation_toolbar;
 
@@ -55,6 +56,9 @@ pub struct TopPanel {
 
     multiple_run_strings: Vec<(String, Option<bool>)>,
     multiple_run_selected_index: Option<usize>,
+
+    set_name_input_window: InputWindow,
+    set_name_state_id: Option<u32>,
 }
 
 impl TopPanel {
@@ -76,6 +80,9 @@ impl TopPanel {
 
             multiple_run_strings: vec![(String::new(), None)],
             multiple_run_selected_index: None,
+
+            set_name_input_window: InputWindow::new("set_name"),
+            set_name_state_id: None,
         }
     }
 
@@ -143,6 +150,10 @@ impl TopPanel {
 
             if let Some(fast_run_result) = self.fast_run_result {
                 self.show_fast_run_result_window(egui_ctx, fast_run_result);
+            }
+
+            if self.set_name_input_window.open {
+                self.show_set_name_input_window(egui_ctx, states);
             }
         });
 

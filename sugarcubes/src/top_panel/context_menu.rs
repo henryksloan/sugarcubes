@@ -104,6 +104,16 @@ impl TopPanel {
 
                             ui.separator();
 
+                            if ui.button("Set Name").clicked() {
+                                self.set_name_input_window.open = true;
+                                self.set_name_input_window.input = states.get_name(selected);
+                                self.set_name_state_id = Some(selected);
+                                *selected_state = None;
+                                ui.memory().close_popup();
+                            }
+
+                            ui.separator();
+
                             if ui.button("Delete").clicked() {
                                 command = Some(Command::DeleteState(
                                     selected,
