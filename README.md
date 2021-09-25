@@ -34,7 +34,7 @@ Sugarcubes is in an early stage of development, having support for editing and s
 
 ## Next steps
 * Usable FA edit mode
-    * State naming, labels (should these JFLAP features be merged?)
+    * State labels
     * Keyboard shortcuts for context menu operations
     * Multiple select mode
         * Click-drag starting on the background

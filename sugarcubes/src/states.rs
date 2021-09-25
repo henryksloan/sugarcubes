@@ -18,14 +18,21 @@ pub const FINAL_STATE_CIRCLE_RATIO: f32 = 0.85;
 pub const INITIAL_ARROW_SIZE: f32 = 24.;
 pub const STATE_FONT_SIZE: f64 = 30.;
 
+pub const DEFAULT_NAME_PREFIX: &str = "q";
+// Macroquad currently draws text at weird Y coordinates,
+// this is a sane adjustment value.
+pub const STATE_TEXT_Y_ADJUSTMENT: f32 = 4.;
+
 pub struct States {
     position_map: HashMap<u32, Vec2>,
+    name_map: HashMap<u32, String>,
 }
 
 impl States {
     pub fn new() -> Self {
         Self {
             position_map: HashMap::new(),
+            name_map: HashMap::new(),
         }
     }
 
@@ -37,9 +44,25 @@ impl States {
         self.position_map.insert(state, position);
     }
 
+    pub fn get_name(&mut self, state: u32) -> String {
+        self.name_map
+            .get(&state)
+            .cloned()
+            .unwrap_or_else(String::new)
+    }
+
+    pub fn insert_name(&mut self, state: u32, name: String) {
+        self.name_map.insert(state, name);
+    }
+
+    pub fn default_name(state: u32) -> String {
+        DEFAULT_NAME_PREFIX.to_owned() + &state.to_string()
+    }
+
     pub fn add_state(&mut self, fa: &mut FiniteAutomaton, position: Vec2) -> u32 {
         let state = fa.automaton.add_new_state();
         self.position_map.insert(state, position);
+        self.name_map.insert(state, Self::default_name(state));
         state
     }
 
@@ -52,6 +75,8 @@ impl States {
         let succeeded = fa.automaton.try_add_state_with_id(id);
         if succeeded {
             self.position_map.insert(id, position);
+            self.name_map
+                .insert(id, DEFAULT_NAME_PREFIX.to_owned() + &id.to_string());
         }
         succeeded
     }
@@ -59,6 +84,7 @@ impl States {
     pub fn remove_state(&mut self, fa: &mut FiniteAutomaton, state: u32) {
         fa.automaton.remove_state(state);
         self.position_map.remove(&state);
+        self.name_map.remove(&state);
     }
 
     pub fn point_in_state(&self, point: Vec2, state: u32) -> bool {
@@ -124,12 +150,12 @@ impl States {
             );
         }
 
-        let text = &state.to_string();
-        let text_size = measure_text(text, None, STATE_FONT_SIZE as _, 1.0);
+        let text = self.get_name(state);
+        let text_size = measure_text(&text, Some(*font), STATE_FONT_SIZE as _, 1.0);
         draw_text_ex(
-            &state.to_string(),
+            &text,
             position.x - text_size.width / 2.,
-            position.y - text_size.height / 2. + STATE_RADIUS / 2.,
+            position.y - text_size.height / 2. + STATE_RADIUS / 2. + STATE_TEXT_Y_ADJUSTMENT,
             TextParams {
                 font_size: STATE_FONT_SIZE as _,
                 font: *font,
