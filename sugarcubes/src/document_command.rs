@@ -69,6 +69,7 @@ impl DocumentCommand {
             if let XMLNode::Element(element) = child {
                 if element.name.as_str() == "state" {
                     let id: u32 = element.attributes.get("id")?.parse().ok()?;
+                    let name: &String = element.attributes.get("name")?;
                     let x: f32 = element.get_child("x")?.get_text()?.parse().ok()?;
                     let y: f32 = element.get_child("y")?.get_text()?.parse().ok()?;
                     let is_initial = element.get_child("initial").is_some();
@@ -78,6 +79,7 @@ impl DocumentCommand {
                         vec2(x * SCALE_FACTOR, y * SCALE_FACTOR),
                         id,
                     );
+                    new_states.insert_name(id, name.clone());
 
                     if is_initial {
                         new_fa.automaton.set_initial(id);
