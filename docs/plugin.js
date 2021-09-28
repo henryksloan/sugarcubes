@@ -1,4 +1,7 @@
 async function choose_jff_file() {
+    // TODO: These sometimes don't work when the user hasn't just clicked
+    // repro: Click on the canvas, press escape several times, then use Ctrl-O
+    // it is blocked as a popup not caused by user action
      const element = document.createElement("input");
      element.type = "file";
      element.style.display = "none";

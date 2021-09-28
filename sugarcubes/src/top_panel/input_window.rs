@@ -48,7 +48,6 @@ impl InputWindow {
                     let mut text_edit_state = ui
                         .memory()
                         .id_data
-                        // .get_or_default::<State>(text_edit_id)
                         .get_or_default::<State>(text_edit_id)
                         .clone();
                     let text_style = ui

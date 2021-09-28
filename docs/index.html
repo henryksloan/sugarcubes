@@ -17,7 +17,11 @@
             z-index: 0;
         }
     </style>
-    <script> document.addEventListener('contextmenu', event => event.preventDefault());</script>
+    <script>
+        document.addEventListener("contextmenu", e => e.preventDefault());
+        // TODO: Only do this for certain keys, perhaps only ones with mapped actions
+        window.addEventListener("keydown", e => e.preventDefault());
+    </script>
     <link rel="shortcut icon" type="image/png" href="favicon.png" />
 </head>
 
