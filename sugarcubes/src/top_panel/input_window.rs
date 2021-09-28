@@ -1,7 +1,11 @@
+use egui::CursorPair;
+
 pub struct InputWindow {
     id: egui::Id,
     pub open: bool,
     pub input: String,
+    // If set to on, move cursor to the end of the input on next call to show()
+    pub end_of_line: bool,
 }
 
 impl InputWindow {
@@ -10,6 +14,7 @@ impl InputWindow {
             id: egui::Id::new(id),
             open: false,
             input: String::new(),
+            end_of_line: false,
         }
     }
 
@@ -27,8 +32,36 @@ impl InputWindow {
             .show(egui_ctx, |ui| {
                 // TODO: Checking for lost_focus AND enter pressed no longer works; fix that
                 //     || (text_edit.lost_focus() && ui.input().key_pressed(egui::Key::Enter))
-                let text_edit = ui.add(egui::TextEdit::singleline(&mut self.input));
+                let text_edit_id = self.id.with("input");
+                let text_edit =
+                    ui.add(egui::TextEdit::singleline(&mut self.input).id(text_edit_id));
                 text_edit.request_focus();
+
+                if self.end_of_line {
+                    self.end_of_line = false;
+
+                    #[derive(Clone, Debug, Default)]
+                    struct State {
+                        cursorp: Option<CursorPair>,
+                    }
+
+                    let mut text_edit_state = ui
+                        .memory()
+                        .id_data
+                        // .get_or_default::<State>(text_edit_id)
+                        .get_or_default::<State>(text_edit_id)
+                        .clone();
+                    let text_style = ui
+                        .style()
+                        .override_text_style
+                        .unwrap_or_else(|| ui.style().body_text_style);
+                    let galley = ui
+                        .fonts()
+                        .layout_single_line(text_style, self.input.clone());
+                    if let Some(cursorp) = &mut text_edit_state.cursorp {
+                        (*cursorp).primary = galley.cursor_end_of_row(&cursorp.primary);
+                    }
+                }
 
                 ui.horizontal(|ui| {
                     if ui.button("Ok").clicked() || ui.input().key_pressed(egui::Key::Enter) {

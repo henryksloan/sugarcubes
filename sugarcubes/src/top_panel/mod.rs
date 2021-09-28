@@ -153,7 +153,10 @@ impl TopPanel {
             }
 
             if self.set_name_input_window.open {
-                self.show_set_name_input_window(egui_ctx, states);
+                let set_name_input_command = self.show_set_name_input_window(egui_ctx, states);
+                if let Some(set_name_input_command) = set_name_input_command {
+                    command = Some(set_name_input_command);
+                }
             }
         });
 
