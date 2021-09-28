@@ -118,6 +118,7 @@ impl TopPanel {
                                 command = Some(Command::DeleteState(
                                     selected,
                                     *states.get_position(selected),
+                                    states.get_name(selected),
                                     fa.automaton
                                         .transitions_with(selected)
                                         .into_iter()
